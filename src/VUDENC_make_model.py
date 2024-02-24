@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 import random
 import pickle
-#import numpy
+import numpy
 #from keras.models import Sequential
 #from keras.layers import Dense
 #from keras.layers import LSTM
@@ -16,7 +16,7 @@ import pickle
 #from sklearn.metrics import recall_score
 #from sklearn.metrics import f1_score
 #from sklearn.utils import class_weight
-#import tensorflow as tf
+import tensorflow as tf
 from gensim.models import Word2Vec, KeyedVectors
 
 # TODO: von VUDENC geklaut, insofern sollt ich das villeicht auch in eine extra dir: VUDENC_src packen
@@ -47,23 +47,25 @@ if (len(sys.argv) > 1):
 progress = 0
 count = 0
 
-# TODO: w2v Zeug brauche ich nicht
-"""### paramters for the filtering and creation of samples
+
+### paramters for the filtering and creation of samples
 restriction = [20000, 5, 6, 10]  # which samples to filter out
 step = 5  # step lenght n in the description
 fulllength = 200  # context length m in the description
 
 mode2 = str(step) + "_" + str(fulllength)
 
+# TODO: w2v Zeug brauche ich nicht
+
 ### hyperparameters for the w2v model
-mincount = 10  # minimum times a word has to appear in the corpus to be in the word2vec model
+"""mincount = 10  # minimum times a word has to appear in the corpus to be in the word2vec model
 iterationen = 100  # training iterations for the word2vec model
 s = 200  # dimensions of the word2vec model
 w = "withString"  # word2vec model is not replacing strings but keeping them
 
 # get word2vec model
 w2v = "word2vec_" + w + str(mincount) + "-" + str(iterationen) + "-" + str(s)
-w2vmodel = "w2v/" + w2v + ".model"  # das ist das bereits erstellte model mit den o.g. parametern, also die Datei:
+w2vmodel = "../VUDENC_data/w2v/" + w2v + ".model"  # das ist das bereits erstellte model mit den o.g. parametern, also die Datei:
 # word2vec_withString-10-100-200.model
 # hier im Project habe ich das von mir trainierte w2v, falls ich neu trainieren muss
 # zum testen reicht aber vielleicht auch das alte (vom 10.12.????
@@ -78,8 +80,7 @@ word_vectors = w2v_model.wv"""
 
 
 # load data
-with (open('../VUDENC_data/plain_' + mode, 'r') as
-      infile):  # Input if mode=sql, dann der File plain_sql from Code/data usw.
+with (open('../VUDENC_data/plain_' + mode, 'r') as infile):  # Input if mode=sql, dann der File plain_sql from Code/data usw.
     data = json.load(infile)
 
 now = datetime.now()  # current date and time
@@ -91,8 +92,11 @@ allblocks = []
 
 for r in data:  # repository
     progress = progress + 1
+    #print("\nprogress: ", progress)
+    #print("r: ", r)
 
     for c in data[r]:  # commit
+        #print("c: ", c)
 
         if "files" in data[r][c]:
             #  if len(data[r][c]["files"]) > restriction[3]:
@@ -106,11 +110,13 @@ for r in data:  # repository
                 #       continue
 
                 if not "source" in data[r][c]["files"][f]:
+                    #print("no sourcecode")
                     # no sourcecode
                     continue
 
                 if "source" in data[r][c]["files"][f]:
                     sourcecode = data[r][c]["files"][f]["source"]
+                    #print("sourcecode", sourcecode)
                     #     if len(sourcecode) > restriction[0]:
                     # sourcecode is too long
                     #       continue
@@ -128,26 +134,33 @@ for r in data:  # repository
                         #       break
 
                         for bad in badparts:
+                            #print("count ", count)
                             # check if they can be found within the file
                             pos = VUDENC_utils.findposition(bad, sourcecode)
+                            #print("pos ", pos)
                             if not -1 in pos:
+                                print("pos ", pos)
                                 allbadparts.append(bad)
 
-                    #   if (len(allbadparts) > restriction[2]):
-                    # too many bad positions in the file
-                    #     break
+                            #   if (len(allbadparts) > restriction[2]):
+                            # too many bad positions in the file
+                            #     break
 
                     if (len(allbadparts) > 0):
+                        print("XXXX:", len(allbadparts))
                         #   if len(allbadparts) < restriction[2]:
                         # find the positions of all modified parts
                         positions = VUDENC_utils.findpositions(allbadparts, sourcecode)
 
                         # get the file split up in samples
                         blocks = VUDENC_utils.getblocks(sourcecode, positions, step, fulllength)
+                        print("blocks: ", blocks)
 
                         for b in blocks:
                             # each is a tuple of code and label
                             allblocks.append(b)
+
+print("allblocks: ", allblocks) # TODO Hier hist doch schon das Problem
 ############## meins######
 ##### allblocks [] ist der komplett code nach filtering
 keys = []
@@ -164,8 +177,8 @@ keystrain = keys[:cutoff]  # Keys der Trainingsdaten
 keystest = keys[cutoff:cutoff2]  # Keys der Testdaten
 keysfinaltest = keys[cutoff2:]  # Keys des final test
 
-print("cutoff " + str(cutoff))
-print("cutoff2 " + str(cutoff2))
+print("cutoff " + str(cutoff))  # TODO: VUDENC auf gruenau: 199219
+print("cutoff2 " + str(cutoff2))  # TODO: VUDENC auf gruenau: 241909
 
 with open('../VUDENC_data/' + mode + '_dataset_keystrain',
           'wb') as fp:  # The pickle module implements binary protocols for serializing and de-serializing a Python object structure. “Pickling” is the process whereby a Python object hierarchy is converted into a byte stream,
@@ -196,8 +209,8 @@ for k in keystrain:
   """for t in token: #convert all tokens into their word2vec vector representation  # TODO: Möchte ich das???
     if t in word_vectors.vocab and t != " ":
       vector = w2v_model[t]
-      vectorlist.append(vector.tolist())"""
-  TrainX.append(vectorlist) #append the list of vectors to the X (independent variable)
+      vectorlist.append(vector.tolist())
+  TrainX.append(vectorlist) #append the list of vectors to the X (independent variable)"""
   TrainY.append(block[1]) #append the label to the Y (dependent variable)
 
   print("TrainY: ", TrainY)  # Elke war das
@@ -251,3 +264,53 @@ with open('../VUDENC_data/' + mode + '_dataset_finaltest_X', 'wb') as fp:
 with open('../VUDENC_data/' + mode + '_dataset_finaltest_Y', 'wb') as fp:
   pickle.dump(FinaltestY, fp)
 #print("saved finaltest.")
+
+# Prepare the data for the LSTM model
+
+X_train = numpy.array(TrainX)
+y_train = numpy.array(TrainY)
+X_test = numpy.array(ValidateX)
+y_test = numpy.array(ValidateY)
+X_finaltest = numpy.array(FinaltestX)
+y_finaltest = numpy.array(FinaltestY)
+
+# in the original collection of data, the 0 and 1 were used the other way round, so now they are switched so that "1" means vulnerable and "0" means clean.
+# TODO!!! So labeling of vulnerable or not has already happened? Where?
+for i in range(len(y_train)):
+    if y_train[i] == 0:
+        y_train[i] = 1
+    else:
+        y_train[i] = 0
+
+for i in range(len(y_test)):
+    if y_test[i] == 0:
+        y_test[i] = 1
+    else:
+        y_test[i] = 0
+
+for i in range(len(y_finaltest)):
+    if y_finaltest[i] == 0:
+        y_finaltest[i] = 1
+    else:
+        y_finaltest[i] = 0
+
+now = datetime.now()  # current date and time
+nowformat = now.strftime("%H:%M")
+print("numpy array done. ", nowformat)
+
+print(str(len(X_train)) + " samples in the training set.")
+print(str(len(X_test)) + " samples in the validation set.")
+print(str(len(X_finaltest)) + " samples in the final test set.")
+
+csum = 0
+for a in y_train:  # TODO: y_train ist vulnerable, x_train not vulnerable or vice versa? wo wird das definiert, rausgezogen?
+    csum = csum + a
+print("percentage of vulnerable samples: " + str(int((csum / len(X_train)) * 10000) / 100) + "%")
+
+testvul = 0
+for y in y_test:
+    if y == 1:
+        testvul = testvul + 1
+print("absolute amount of vulnerable samples in test set: " + str(testvul))
+
+max_length = fulllength
