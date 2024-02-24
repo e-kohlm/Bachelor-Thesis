@@ -1,14 +1,14 @@
-#from keras.datasets import imdb
-#from keras.models import Sequential
-#from keras.layers import Dense
-#from keras.layers import Dropout
-#from keras.layers import Flatten
-#from keras.layers import LSTM
+from keras.datasets import imdb
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import Dropout
+from keras.layers import Flatten
+from keras.layers import LSTM
 #from keras.layers.convolutional import Conv1D
 #from keras.layers.convolutional import MaxPooling1D
 #from keras.models import load_model
 #from keras.layers.embeddings import Embedding
-#from keras.layers import Bidirectional
+from keras.layers import Bidirectional
 from keras.preprocessing import sequence
 from keras import backend as K
 #from sklearn.metrics import accuracy_score
@@ -16,13 +16,13 @@ from keras import backend as K
 #from sklearn.metrics import recall_score
 #from sklearn.metrics import f1_score
 #from sklearn.utils import class_weight
-#import tensorflow as tf
+import tensorflow as tf
 import builtins
 import keyword
-#import pickle
+import pickle
 import numpy
 import os
-#from gensim.models import Word2Vec, KeyedVectors
+from gensim.models import Word2Vec, KeyedVectors
 import tensorflow as tf
 from PIL import Image
 from PIL import ImageDraw
@@ -82,108 +82,45 @@ def findposition(badpart,sourcecode):
     if len(b) < 1:
         print(b)
         #  print("nope.\n\n")
-        return[-1,-1]
+        return[-1, -1]
 
     while not end:
         #print("position : " + str(pos))
         if not inacomment:
             last = pos-1
-
         if pos >= len(sourcecode):
             end = True
             break
-
         if sourcecode[pos] == "\n":
             #     print("end of comment")
             #     print("[" + sourcecode[last]+ "]")
             inacomment = False
-
         if sourcecode[pos] == "\n" and (sourcecode[pos-1] == "\n" or sourcecode[last] == " "):
             #print("one further")
-            pos = pos +1
+            pos = pos + 1
             continue
-
         if sourcecode[pos] == " " and (sourcecode[pos-1] == " " or sourcecode[last] == "\n"):
             # print("one further")
             pos = pos +1
             continue
-
         if sourcecode[pos] == "#":
             inacomment = True
-
-
-        #    if sourcecode[pos] == "'":
-        #      if pos+2 < len(sourcecode):
-        #        if sourcecode[pos+1] == "'" and sourcecode[pos+2] == "'":
-        #          if not bigcomment:
-        #            pos = pos+3
-        #            bigcomment = True
-        #        #    print(">>> BIGCOMMENT")
-        #            continue
-        #          else:
-        #            pos = pos+3
-        #            bigcomment = False
-        #         #   print(">>> BIGCOMMENT END")
-        #            continue
-
-        #    if sourcecode[pos] == '"':
-        #      if pos+2 < len(sourcecode):
-        #        if sourcecode[pos+1] == '"' and sourcecode[pos+2] == '"':
-        #          if not bigcomment2:
-        #            pos = pos+3
-        #            bigcomment2 = True
-        #          #  print(">>> BIGCOMMENT")
-        #            continue
-        #          else:
-        #            pos = pos+3
-        #            bigcomment2 = False
-        #           # print(">>> BIGCOMMENT END")
-        #            continue
-
-        if False:
-            print("---------------------------------")
-            string1 = ""
-            string2 = ""
-            for i in range(0,pos):
-                string1 = string1 + sourcecode[i]
-            for i in range(pos+1,len(sourcecode)):
-                string2 = string2 + sourcecode[i]
-                print(string1 + "[" + sourcecode[pos] + "]" + string2)
-                print("---------------------------------")
-
-            string1 = ""
-            string2 = ""
-
-            for i in range(0,matchindex):
-                string1 = string1 + badpart[i]
-
-            for i in range(matchindex+1,len(badpart)):
-                string2 = string2 + badpart[i]
-
-            print(string1 + "[" + badpart[matchindex] + "]" + string2)
-            print("---------------------------------")
 
         if not inacomment: # and not bigcomment and not bigcomment2:
             a = sourcecode[pos]
             if a == "\n":
                 a = " "
-            b   = badpart[matchindex]
+            b = badpart[matchindex]
             c = ""
-
             if matchindex > 0:
                 c = badpart[matchindex-1]
-
             d = ""
-
             if matchindex < len(badpart)-2:
                 d = badpart[matchindex+1]
-
             if (a != b) and (a == " " or a == "\n") and ((b in splitchars) or (c in splitchars)):
                 pos = pos+1
                 # TODO: If I comment continue out, variable pos is marked as used
                 continue
-
-
             if (a != b) and (b == " " or b == "\n"):
                 #print("here")
                 if (c in splitchars or d in splitchars):
@@ -191,13 +128,11 @@ def findposition(badpart,sourcecode):
                     if (matchindex < len(badpart)-1):
                         matchindex = matchindex + 1
                         continue
-
             if a == b:
                 if matchindex == 0:
                     startfound = pos
                     # print("\n>>match: " + badpart[matchindex] + "(" + str(matchindex) + "/" + str(len(badpart)) + ")\n\n")
                 matchindex = matchindex + 1
-
             else:
                 #print("\n>>no match" )
                 matchindex = 0
@@ -205,7 +140,7 @@ def findposition(badpart,sourcecode):
 
             if matchindex == len(badpart):
                 endfound = pos
-                print("FOUND at pos "+ str(startfound) + ":" + str(endfound))
+                #print("FOUND at pos " + str(startfound) + ":" + str(endfound))
                 break
 
         if pos == len(sourcecode):
@@ -213,25 +148,26 @@ def findposition(badpart,sourcecode):
 
         pos = pos + 1
 
-        position.append(startfound)
-        position.append(endfound)
+    position.append(startfound)
+    position.append(endfound)
 
-        if endfound < 0:
-            startfound = -1
+    if endfound < 0:
+        startfound = -1
 
-        if endfound < 0 and startfound < 0: #and not "#" in badpart and not '"""' in badpart and not "'''" in badpart:
-            #    print(sourcecode)
-            #    print(":::::::::::")
-            #    print(badpart)
-            #    print("-----------------")
-            return[-1,-1]
+    if endfound < 0 and startfound < 0: #and not "#" in badpart and not '"""' in badpart and not "'''" in badpart:
+        #    print(sourcecode)
+        #    print(":::::::::::")
+        #    print(badpart)
+        #    print("-----------------")
+        return[-1, -1]
     return position
 
 
 
 
 def findpositions(badparts,sourcecode):
-    print("Elke: findpositions is used.")
+    # TODO: confirmed it is used
+    #print("Elke: findpositions is used.")
     positions = []
   
     for bad in badparts:
@@ -246,7 +182,8 @@ def findpositions(badparts,sourcecode):
     return positions
 
 def nextsplit(sourcecode,focus):
-    print("Elke: nextsplit is used.")
+    # TODO: confirmed it is used
+    #print("Elke: nextsplit is used.")
     splitchars = [" ","\t","\n", ".", ":", "(", ")", "[", "]", "<", ">", "+", "-", "=","\"", "\'","*", "/","\\","~","{","}","!","?","*",";",",","%","&"]
     for pos in range(focus+1, len(sourcecode)):
         if sourcecode[pos] in splitchars:
@@ -254,7 +191,8 @@ def nextsplit(sourcecode,focus):
     return -1
 
 def previoussplit(sourcecode,focus):
-    print("Elke: previoussplit is used.")
+    # TODO: confirmed it is used
+    #print("Elke: previoussplit is used.")
     splitchars = [" ","\t","\n", ".", ":", "(", ")", "[", "]", "<", ">", "+", "-", "=","\"", "\'","*", "/","\\","~","{","}","!","?","*",";",",","%","&"]
     pos = focus-1
     while(pos >= 0):
@@ -264,7 +202,8 @@ def previoussplit(sourcecode,focus):
     return -1
 
 def getcontextPos(sourcecode,focus,fulllength):
-    print("Elke: getContextPos is used.")
+    # TODO: confirmed it is used
+    #print("Elke: getContextPos is used.")
     startcontext = focus
     endcontext = focus
     if focus > len(sourcecode)-1:
@@ -274,11 +213,11 @@ def getcontextPos(sourcecode,focus,fulllength):
   
       
     while not len(sourcecode[startcontext:endcontext]) > fulllength:
-        print(str(startcontext) + ":" + str(endcontext))
-        print(len(sourcecode[startcontext:endcontext]))
+        #print(str(startcontext) + ":" + str(endcontext))
+        #print(len(sourcecode[startcontext:endcontext]))
     
         if previoussplit(sourcecode,startcontext) == -1 and nextsplit(sourcecode,endcontext) == -1:
-            print("NONE!")
+            #print("NONE!")
             return None
     
         if start:
@@ -333,7 +272,8 @@ def getcontext(sourcecode,focus,fulllength):
 
 
 def getblocks(sourcecode, badpositions, step, fulllength):
-    print("Elke: getblocks is used.")
+    # TODO: confirmed it is used
+    #print("Elke: getblocks is used.")
     blocks = []
     focus = 0
     lastfocus = 0
@@ -438,7 +378,8 @@ def getBadpart(change):
     return [badexamples,goodexamples]
 
 def getTokens(change):
-    print("Elke: getTokens is used.")
+    # TODO: confirmed it is used
+    #print("Elke: getTokens is used.")
     tokens = []
 
     change = change.replace(" .",".")
