@@ -22,16 +22,21 @@ from gensim.models import Word2Vec, KeyedVectors
 # TODO: von VUDENC geklaut, insofern sollt ich das villeicht auch in eine extra dir: VUDENC_src packen
 
 """
-run from /src with command python VUDENC_make_model.py sql
+run from /src with command nice -n 19 python VUDENC_make_model.py sql
 Running without error with sql as example
+Input files: 
+plain_sql
+and if w2v is needed:
+word2vec_withString10-100-200.model
+word2vec_withString10-100-200.model.syn1neg.npy
+word2vec_withString10-100-200.model.wv.vectors.npy
+
 Created are the files:  
 - sql_dataset_finaltest_X
 - sql_dataset_finaltest_Y
 - sql_dataset_keysfinaltest
 - sql_dataset_keystest
 - sql_dataset_keystrain
-
-
 """
 
 ###main####
