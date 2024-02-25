@@ -22,7 +22,7 @@ from gensim.models import Word2Vec, KeyedVectors
 # TODO: von VUDENC geklaut, insofern sollt ich das villeicht auch in eine extra dir: VUDENC_src packen
 
 """
-run from /src with command nice -n 19 python VUDENC_make_model.py sql
+run from /src with command nice -n 19 python3 VUDENC_make_model.py sql
 Running without error with sql as example
 Input files: 
 plain_sql
