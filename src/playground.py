@@ -13,7 +13,11 @@ response = generator(
     num_return_sequences=2,)
 print(response)"""
 import pickle
+import numpy
 from datetime import datetime
+import json
+from contextlib import redirect_stdout
+from itertools import islice
 
 # Code from CodeT5+ github README
 
@@ -36,6 +40,7 @@ print(tokenizer.decode(outputs[0], skip_special_tokens=True))"""
 
 # Code from Huggingface https://huggingface.co/Salesforce/codet5p-220m
 from transformers import T5ForConditionalGeneration, AutoTokenizer
+import torch
 
 checkpoint = "Salesforce/codet5p-220m"
 device = "cpu"  # for GPU usage or "cpu" for CPU usage
@@ -55,22 +60,55 @@ prompt = "Find and point out any vulnerable code snippets in the following Pytho
 file_path = "../VUDENC_data/"
 mode = 'sql'
 
-with open(file_path + mode + '_dataset_finaltest_X', 'rb') as file:
-    FinaltestX = pickle.load(file)
-with open(file_path + mode + '_dataset_finaltest_Y', 'rb') as file:
-    FinaltestY = pickle.load(file)
+
+# plain_sql: working so far that it opens file and writes some data into another file
+with open(file_path + 'plain_sql', 'r') as input_file:
+    print("type of plain_sql: ", type(input_file))  
+    data = json.load(input_file)
+
+x = 1
+y = 2
+for r in islice(data, x):   
+    for c in islice(data, y):
+        with open('my_test_data_1.txt', 'w') as f:
+            with redirect_stdout(f): 
+                print("r: ", r, "\n")
+                print("c: ", c, "\n")
+                print("data: ", data, "\n")
+repo_count = 0
+for r in data:
+    repo_count += 1
+    print("\nr: ", r)   
+    for c in data[r]:        
+        print("c: ", c)              
+
+print("repo_count plain_sql: ", repo_count)        
 
 now = datetime.now()  # current date and time
-nowformat = now.strftime("%H:%M")
-print("nowformat:", nowformat)
+start_time = now.strftime("%H:%M")
+print("Start:", start_time)
 
-# Encode the input prompt and code using the tokenizer
-input_sequence = prompt + FinaltestX + FinaltestY
-input_sequence_tokens = tokenizer.encode(input_sequence, return_tensors="pt").to(device)
+# sql_dataset_finaltest_x not working
+with open(file_path + 'sql_dataset_finaltest_X', 'rb') as in_file:  # FIXME: Error with r or rb
+    print("type of sql_dataset_finaltest_X: ", type(in_file))  
+    # FIXME: UnicodeDecodeError: 'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte
+    data = json.load(in_file)  
+    
 
-# Generate the output code prediction using the model
-output_sequence = model.generate(input_sequence_tokens, max_length=150)
+x = 1
+y = 2
+for r in islice(data, x):   
+    for c in islice(data, y):
+        with open('my_test_data_2.txt', 'w') as f:
+            with redirect_stdout(f): 
+                print("r: ", r, "\n")
+                print("c: ", c, "\n")
+                print("data: ", data, "\n")
+repo_count = 0
+for r in data:
+    repo_count += 1
+    print("\nr: ", r)   
+    for c in data[r]:        
+        print("c: ", c)              
 
-# Decode and print the output sequence
-decoded_output = tokenizer.decode(output_sequence[0], skip_special_tokens=True)
-print(decoded_output)
+print("repo_count: ", repo_count)    
