@@ -282,7 +282,7 @@ X_finaltest = numpy.array(FinaltestX)
 y_finaltest = numpy.array(FinaltestY)
 
 # in the original collection of data, the 0 and 1 were used the other way round, so now they are switched so that "1" means vulnerable and "0" means clean.
-# TODO!!! So labeling of vulnerable or not has already happened? Where?
+# TODO!!! So labeling of vulnerable or not has already happened? Where? in utils, I think
 for i in range(len(y_train)):
     if y_train[i] == 0:
         y_train[i] = 1
