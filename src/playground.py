@@ -94,21 +94,4 @@ with open(file_path + 'sql_dataset_finaltest_X', 'rb') as in_file:  # FIXME: Err
     # FIXME: UnicodeDecodeError: 'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte
     data = json.load(in_file)  
     
-
-x = 1
-y = 2
-for r in islice(data, x):   
-    for c in islice(data, y):
-        with open('my_test_data_2.txt', 'w') as f:
-            with redirect_stdout(f): 
-                print("r: ", r, "\n")
-                print("c: ", c, "\n")
-                print("data: ", data, "\n")
-repo_count = 0
-for r in data:
-    repo_count += 1
-    print("\nr: ", r)   
-    for c in data[r]:        
-        print("c: ", c)              
-
-print("repo_count: ", repo_count)    
+ 

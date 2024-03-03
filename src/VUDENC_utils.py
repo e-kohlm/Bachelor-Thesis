@@ -299,16 +299,18 @@ def getblocks(sourcecode, badpositions, step, fulllength):
                         vulnerablePos = True
 
 
-                q = -1
+                label = -1     # Name of variable changed from q to label by Elke Kohlmann
                 if vulnerablePos:
-                    q = 0
+                    label = 1  # Changed from 0 to 1 by Elke Kohlmann (in VUDENC it was mislabeled originally and in make_model.py corrected)
                 else:
-                    q = 1
+                    label = 0  # Changed from 1 to 0 by Elke Kohlmann (in VUDENC it was mislabeled originally and in make_model.py corrected)
 
 
                 singleblock = []
                 singleblock.append(sourcecode[context[0]:context[1]])
-                singleblock.append(q)
+                #print("singleblock: ", singleblock)
+                singleblock.append(label)                
+                #print("singleblock: ", singleblock)
 
                 already = False
                 for b in blocks:
