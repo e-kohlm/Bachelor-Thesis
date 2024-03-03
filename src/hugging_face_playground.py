@@ -17,6 +17,7 @@ from contextlib import redirect_stdout
 file_path = "../VUDENC_data/"
 plain_sql = "plain_sql"
 finaltest_x = "sql_dataset_finaltest_X"
+training = "elke_sql_dataset-TRAINING"
 
 # Ich habe alle files furchprobiert, überall dasselbe ich bekomme bytes, aber keine str (auch wenn ich r anstelle von rb als modus gebe
 # TODO: das ist aber vielleicht auch gut so ... ? nur wie kann ich bytefiles laden in model, das ist die Fragen
@@ -26,29 +27,29 @@ keystest = "sql_dataset_keystest"
 keystrain = "sql_dataset_keystrain"
 
 # TODO:
-#  - make_model anschauen, was genau wurde da gemacht mit plain_sql?
-#     Umwandlung in numpy array, dann kann da kein String rauskommen
-#     mit w2v representation ersetzt? dann kann da kein string rauskommne
-#  - was brauche ich? plain test mit einem label? wie bekomme ich das?
+# okay, so weit so gut
+# ich muss aber die Daten so bekommen, dass getrennt wird in features und label
+# so wie es jetzt ist, wird das label als feature erkannt, das ist falsch!!!
 
 # plain_sql is working, but not without 'train'
-# sql_dataset_finaltest_X is not working like that
-dataset = load_dataset("json", data_files=file_path + plain_sql)
+
+
+dataset = load_dataset("json", data_files=file_path + training)
 with open('test_1.json', 'w') as f:
     with redirect_stdout(f):
-        #print(dataset['train'][0])
+        print(dataset['train'][0])
         print(dataset['train'][-1])
-        #print(dataset['train'])     # Output:
+        print(dataset['train'])     # Output:
                                     # Dataset({
                                     #   features: ['htt .......
                                     #   num_rows: 1
                                     # })
-        # TODO: Problem hier: 1. nur 1 Zeile für ganzen Code 2. ' ' erkennt json nicht, ich bräuchte " "
 
-dataset_one = load_dataset("json", data_files=file_path + plain_sql, split='train')
+
+dataset_one = load_dataset("json", data_files=file_path + training, split='train')
 with open('test_2.json', 'w') as f:
     with redirect_stdout(f):
-        print(dataset_one[0])
+        print(dataset_one)
 
 
 

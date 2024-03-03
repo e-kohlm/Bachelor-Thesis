@@ -74,6 +74,8 @@ with open('keys_plain_sql.txt', 'w') as f:      # keys sind die repositories, al
     with redirect_stdout(f):
         print("keys: ", data.keys())"""
 
+
+b_dict = {}
 i = 0               # TODO: weg
 for r in data:  # repository
     i += 1          # TODO: rausnehmen,nur zum testen, damit ich kleinere Datensätze bekommen!!!
@@ -151,9 +153,11 @@ for r in data:  # repository
                                 with open('one block.json', 'w') as f:
                                     with redirect_stdout(f):
                                         print("b: ", b)     # das ist eine Liste: b[0] ist Code, b[1] ist Label
-                                
-                                # each is a tuple of code and label
-                                allblocks.append(b)
+                                                            # each is a tuple of code and label
+                                # meins: turn into dictionary
+                                b_dict['code'] = b[0]
+                                b_dict['label'] = b[1]
+                                allblocks.append(b_dict)
 
 
 # bis hier: Data labeling in vulnerable, not vulnerable
@@ -162,6 +166,7 @@ for r in data:  # repository
 with open('allblocks.json', 'w') as f:
     with redirect_stdout(f):
         print(allblocks)
+
 
 # ab hier: Data in Form bringen
 
@@ -201,24 +206,24 @@ with open('../VUDENC_data/' + 'elke_' + mode + '_dataset_keysfinaltest', 'w') as
     #pickle.dump(keysfinaltest, fp)
     fp.write(str(keysfinaltest))
 
-training_set = {}
-validation_set = {}
-test_set = {}
+training_set = []
+validation_set = []
+test_set = []
 
 print("Creating training dataset... (" + mode + ")")
 for k in keystrain:
     block = allblocks[k]
-    training_set[k] = block
+    training_set.append(block)
 
 print("Creating validation dataset...")
 for k in keysvalidation:
     block = allblocks[k]
-    validation_set[k] = block
+    validation_set.append(block)
 
 print("Creating finaltest dataset...")
 for k in keysfinaltest:
     block = allblocks[k]
-    test_set[k] = block
+    test_set.append(block)
 print("Train length: " + str(len(training_set)))  #
 print("Validation length: " + str(len(validation_set))) #593
 print("Testing length: " + str(len(test_set)))  # 594
