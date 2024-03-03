@@ -4,6 +4,7 @@ from datasets import load_dataset
 from datasets import load_dataset_builder
 import numpy as np
 import codecs
+from contextlib import redirect_stdout
 
 
 # datasets from huggingface, docs: https://huggingface.co/docs/datasets/en/installation
@@ -30,18 +31,50 @@ keystrain = "sql_dataset_keystrain"
 #     mit w2v representation ersetzt? dann kann da kein string rauskommne
 #  - was brauche ich? plain test mit einem label? wie bekomme ich das?
 
-# plain_sql is working, but not without 'train',
-#dataset = load_dataset("json", data_files=file_path + plain_sql)
-#print(dataset['train'][0])
-#print(dataset['train'][-1])
-#dataset_one = load_dataset("json", data_files=file_path + plain_sql, split='train')
-#print(dataset_one[0])
+# plain_sql is working, but not without 'train'
+# sql_dataset_finaltest_X is not working like that
+dataset = load_dataset("json", data_files=file_path + plain_sql)
+with open('test_1.json', 'w') as f:
+    with redirect_stdout(f):
+        #print(dataset['train'][0])
+        print(dataset['train'][-1])
+        #print(dataset['train'])     # Output:
+                                    # Dataset({
+                                    #   features: ['htt .......
+                                    #   num_rows: 1
+                                    # })
+        # TODO: Problem hier: 1. nur 1 Zeile für ganzen Code 2. ' ' erkennt json nicht, ich bräuchte " "
+
+dataset_one = load_dataset("json", data_files=file_path + plain_sql, split='train')
+with open('test_2.json', 'w') as f:
+    with redirect_stdout(f):
+        print(dataset_one[0])
+
+
+
+# TODO: irgendwo bei huggingface , evtl. bei finetunig, um daten kennenzulernen
+
+#ds_builder = load_dataset_builder(file_path + finaltest_x, data_files=data_files)
+#print("ds_builder: ", ds_builder)
+
+#print(ds_builder.info.description)
+
+#print(ds_builder.info.features)
+
+
+
+
+
+
+
+
+
 
 # sql_dataset_finaltest_X ist vom Type: Binary(application/octet-stream)
 # https://www.geeksforgeeks.org/reading-binary-files-in-python/
 # it is working with all files, but only in rb mode, I cannot convert into string
 # Open the binary file
-file = open(file_path + keystest, "rb")
+"""file = open(file_path + keystest, "rb")
 # Reading the first three bytes from the binary file
 data = file.read(3)
 # Knowing the Type of our data
@@ -54,7 +87,7 @@ while data:
     #print("3: ", str(data))
     print("4: ", list(data))  # Gibt mir Liste mit je 3 integer
 # Close the binary file
-file.close()
+file.close()"""
 
 # Program for converting bytes to string using decode()
 # TODO: not working
@@ -97,11 +130,3 @@ file.close()"""
 
 
 
-# TODO: irgendwo bei huggingface , evtl. bei finetunig, um daten kennenzulernen
-
-#ds_builder = load_dataset_builder(file_path + finaltest_x, data_files=data_files)
-#print("ds_builder: ", ds_builder)
-
-#print(ds_builder.info.description)
-
-#print(ds_builder.info.features)
