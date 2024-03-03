@@ -28,28 +28,23 @@ keystrain = "sql_dataset_keystrain"
 
 # TODO:
 # okay, so weit so gut
-# ich muss aber die Daten so bekommen, dass getrennt wird in features und label
-# so wie es jetzt ist, wird das label als feature erkannt, das ist falsch!!!
+#
 
 # plain_sql is working, but not without 'train'
-
-
 dataset = load_dataset("json", data_files=file_path + training)
 with open('test_1.json', 'w') as f:
     with redirect_stdout(f):
         print(dataset['train'][0])
         print(dataset['train'][-1])
-        print(dataset['train'])     # Output:
-                                    # Dataset({
-                                    #   features: ['htt .......
-                                    #   num_rows: 1
-                                    # })
+        print(dataset['train'])
 
 
 dataset_one = load_dataset("json", data_files=file_path + training, split='train')
 with open('test_2.json', 'w') as f:
     with redirect_stdout(f):
         print(dataset_one)
+        print("**********")
+        print(dataset_one.features)
 
 
 
