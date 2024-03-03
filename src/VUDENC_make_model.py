@@ -187,7 +187,7 @@ for r in data:  # repository
 
 with open('allblocks.json', 'w') as f:
     with redirect_stdout(f):
-        print("allblocks: ", allblocks)
+        print(allblocks)
         
 ############## meins######
 ##### allblocks [] ist der komplett code nach filtering
