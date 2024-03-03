@@ -56,36 +56,9 @@ restriction = [20000, 5, 6, 10]  # which samples to filter out
 step = 5  # step lenght n in the description
 fulllength = 200  # context length m in the description
 
-#mode2 = str(step) + "_" + str(fulllength)
-
-# TODO: w2v Zeug brauche ich nicht, oder doch?
-# TODO: Wenn nein: 3 word2vec files wegschmeißen
-# TODO: Wenn ja: in ein Unterverziechnis w2v packen und im Code ändern
-
-### hyperparameters for the w2v model
-mincount = 10  # minimum times a word has to appear in the corpus to be in the word2vec model
-iterationen = 100  # training iterations for the word2vec model
-s = 200  # dimensions of the word2vec model
-w = "withString"  # word2vec model is not replacing strings but keeping them
-
-# get word2vec model
-w2v = "word2vec_" + w + str(mincount) + "-" + str(iterationen) + "-" + str(s)
-w2vmodel = "../VUDENC_data/" + w2v + ".model"  # das ist das bereits erstellte model mit den o.g. parametern, also die Datei:
-# word2vec_withString-10-100-200.model
-# hier im Project habe ich das von mir trainierte w2v, falls ich neu trainieren muss
-# zum testen reicht aber vielleicht auch das alte (vom 10.12.????
-
-# load word2vec model
-if not (os.path.isfile(w2vmodel)):
-    print("word2vec model is still being created...")
-    sys.exit()
-
-#w2v_model = Word2Vec.load(w2vmodel)
-#word_vectors = w2v_model.wv
 
 # load data
-with (open('../VUDENC_data/plain_' + mode,
-           'r') as infile):  # Input if mode=sql, dann der File plain_sql from Code/data usw.
+with (open('../VUDENC_data/plain_' + mode, 'r') as infile):  # Input if mode=sql, dann der File plain_sql from Code/data usw.
     data = json.load(infile)
     # print("data: ", data) # Daten sind da
 
@@ -183,12 +156,15 @@ for r in data:  # repository
                                 allblocks.append(b)
 
 
+# bis hier: Data labeling in vulnerable, not vulnerable
 
 
 with open('allblocks.json', 'w') as f:
     with redirect_stdout(f):
         print(allblocks)
-        
+
+# ab hier: Data in Form bringen
+
 ############## meins######
 ##### allblocks [] ist der komplett code nach filtering
 # print("type allblocks: ", type(allblocks)) # allblocks ist eine Liste fon Listen
@@ -198,6 +174,7 @@ keys = []
 # randomize the sample and split into train, validate and final test set
 print("len allblocks: ", len(allblocks)) #len allblocks:  284599
 for i in range(len(allblocks)):
+    #print("i, allblocks[i]: ", i, ",", allblocks[i])
     keys.append(i)
 random.shuffle(keys)
 
@@ -205,7 +182,7 @@ cutoff = round(0.7 * len(keys))  # 70% for the training set
 cutoff2 = round(0.85 * len(keys))  # 15% for the validation set and 15% for the final test set
 
 keystrain = keys[:cutoff]  # Keys der Trainingsdaten
-keystest = keys[cutoff:cutoff2]  # Keys der Testdaten
+keysvalidation = keys[cutoff:cutoff2]  # Keys der Testdaten
 keysfinaltest = keys[cutoff2:]  # Keys des final test
 
 print("cutoff " + str(cutoff))  # TODO: VUDENC auf gruenau: 199219 - und auch at home
@@ -217,131 +194,43 @@ with open('../VUDENC_data/' + 'elke_' + mode + '_dataset_keystrain', 'w') as fp:
     # The pickle module implements binary protocols for serializing and de-serializing a Python object structure. “Pickling” is the process whereby a Python object hierarchy is converted into a byte stream,
     #pickle.dump(keystrain, fp)  # pickle module not considered secure anymore
     fp.write(str(keystrain))
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset_keystest', 'w') as fp:
+with open('../VUDENC_data/' + 'elke_' + mode + '_dataset_keysvalidation', 'w') as fp:
     #pickle.dump(keystest, fp)
-    fp.write(str(keystest))
+    fp.write(str(keysvalidation))
 with open('../VUDENC_data/' + 'elke_' + mode + '_dataset_keysfinaltest', 'w') as fp:
     #pickle.dump(keysfinaltest, fp)
     fp.write(str(keysfinaltest))
 
-TrainX = []
-TrainY = []
-ValidateX = []
-ValidateY = []
-FinaltestX = []
-FinaltestY = []
+training_set = {}
+validation_set = {}
+test_set = {}
 
-###### Für alle Daten, verteilt in Training, Test, finaltest, werden hier für alle keys, die w2v Werte geholt und in einer Liste gespeichert
 print("Creating training dataset... (" + mode + ")")
 for k in keystrain:
     block = allblocks[k]
-    
-    TrainX.append(block[0])  # append the list of vectors to the X (independent variable)
-    TrainY.append(block[1])  # append the label to the Y (dependent variable)    
-    #print("TrainY: ", TrainY)  # Elke war das
+    training_set[k] = block
 
 print("Creating validation dataset...")
-for k in keystest:
+for k in keysvalidation:
     block = allblocks[k]
-    #code = block[0]
-    #token = VUDENC_utils.getTokens(code)  # get all single tokens from the snippet of code
-    #vectorlist = []
-    '''for t in token:  # convert all tokens into their word2vec vector representation  # TODO: Möchte ich das???
-        if t in word_vectors.key_to_index and t != " ":
-            vector = w2v_model.wv[t]
-            vectorlist.append(vector.tolist())'''
-    ValidateX.append(block[0])  # append the list of vectors to the X (independent variable)
-    ValidateY.append(block[1])  # append the label to the Y (dependent variable)
+    validation_set[k] = block
 
 print("Creating finaltest dataset...")
 for k in keysfinaltest:
     block = allblocks[k]
-    #code = block[0]
-    #token = VUDENC_utils.getTokens(code)  # get all single tokens from the snippet of code
-    #vectorlist = []
-    '''for t in token:  # convert all tokens into their word2vec vector representation  # TODO: Möchte ich das???
-        if t in word_vectors.key_to_index and t != " ":
-            vector = w2v_model.wv[t]
-            vectorlist.append(vector.tolist())'''
-    FinaltestX.append(block[0])  # append the list of vectors to the X (independent variable)
-    FinaltestY.append(block[1])  # append the label to the Y (dependent variable)
-
-print("Train length: " + str(len(TrainX)))
-print("Test length: " + str(len(ValidateX)))
-print("Finaltesting length: " + str(len(FinaltestX)))
+    test_set[k] = block
+print("Train length: " + str(len(training_set)))  #
+print("Validation length: " + str(len(validation_set))) #593
+print("Testing length: " + str(len(test_set)))  # 594
 now = datetime.now()  # current date and time
 nowformat = now.strftime("%H:%M")
 print("time: ", nowformat)
 ######################################################
 
 # saving samples
-
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset-train-X_', 'w') as fp:
-    #  pickle.dump(TrainX, fp)
-    fp.write(str(TrainX))
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset-train-Y_', 'w') as fp:
-    #  pickle.dump(TrainY, fp)
-    fp.write(str(TrainY))
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset-validate-X_', 'w') as fp:
-    #  pickle.dump(ValidateX, fp)
-    fp.write(str(ValidateX))
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset-validate-Y_', 'w') as fp:
-    #  pickle.dump(ValidateY, fp)
-    fp.write(str(ValidateY))
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset_finaltest_X', 'w') as fp:
-    #pickle.dump(FinaltestX, fp)
-    fp.write(str(FinaltestX))
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset_finaltest_Y', 'w') as fp:
-    #pickle.dump(FinaltestY, fp)
-    fp.write(str(FinaltestY))
-# print("saved finaltest.")
-
-# Prepare the data for the LSTM model
-
-#X_train = numpy.array(TrainX)
-#y_train = numpy.array(TrainY)
-#X_test = numpy.array(ValidateX)
-#y_test = numpy.array(ValidateY)
-#X_finaltest = numpy.array(FinaltestX)
-#y_finaltest = numpy.array(FinaltestY)
-
-# in the original collection of data, the 0 and 1 were used the other way round, so now they are switched so that "1" means vulnerable and "0" means clean.
-# TODO: Not necessary anymore, because I changed it in VUDENC_utils.py already: line 304 and 306
-"""for i in range(len(y_train)):
-    if y_train[i] == 0:
-        y_train[i] = 1
-    else:
-        y_train[i] = 0
-
-for i in range(len(y_test)):
-    if y_test[i] == 0:
-        y_test[i] = 1
-    else:
-        y_test[i] = 0
-
-for i in range(len(y_finaltest)):
-    if y_finaltest[i] == 0:
-        y_finaltest[i] = 1
-    else:
-        y_finaltest[i] = 0"""
-
-"""now = datetime.now()  # current date and time
-nowformat = now.strftime("%H:%M")
-#print("numpy array done. ", nowformat)
-
-print(str(len(X_train)) + " samples in the training set.")
-print(str(len(X_test)) + " samples in the validation set.")
-print(str(len(X_finaltest)) + " samples in the final test set.")
-
-csum = 0
-for a in y_train:  # TODO: y_train ist vulnerable, x_train not vulnerable or vice versa? wo wird das definiert, rausgezogen?
-    csum = csum + a
-print("percentage of vulnerable samples: " + str(int((csum / len(X_train)) * 10000) / 100) + "%")
-
-testvul = 0
-for y in y_test:
-    if y == 1:
-        testvul = testvul + 1
-print("absolute amount of vulnerable samples in test set: " + str(testvul))
-
-max_length = fulllength"""
+with open('../VUDENC_data/' + 'elke_' + mode + '_dataset-TRAINING', 'w') as fp:
+    fp.write(json.dumps(training_set))
+with open('../VUDENC_data/' + 'elke_' + mode + '_dataset-VALIDATION', 'w') as fp:
+    fp.write(json.dumps(validation_set))
+with open('../VUDENC_data/' + 'elke_' + mode + '_dataset-TESTING', 'w') as fp:
+    fp.write(json.dumps(test_set))
