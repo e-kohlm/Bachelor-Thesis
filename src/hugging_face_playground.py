@@ -17,7 +17,7 @@ from contextlib import redirect_stdout
 file_path = "../VUDENC_data/"
 plain_sql = "plain_sql"
 finaltest_x = "sql_dataset_finaltest_X"
-training = "elke_sql_dataset-TRAINING"
+training = "EXAMPLE_sql_dataset-TRAINING"
 
 # Ich habe alle files furchprobiert, überall dasselbe ich bekomme bytes, aber keine str (auch wenn ich r anstelle von rb als modus gebe
 # TODO: das ist aber vielleicht auch gut so ... ? nur wie kann ich bytefiles laden in model, das ist die Fragen
@@ -32,15 +32,18 @@ keystrain = "sql_dataset_keystrain"
 
 # plain_sql is working, but not without 'train'
 dataset = load_dataset("json", data_files=file_path + training)
-with open('test_1.json', 'w') as f:
+train_dataset = dataset['train']
+with open('test_huggingface_1.json', 'w') as f:
     with redirect_stdout(f):
-        print(dataset['train'][0])
+        print(train_dataset[0])
+        print(train_dataset[1])
         print(dataset['train'][-1])
+        print("#####")
         print(dataset['train'])
 
 
 dataset_one = load_dataset("json", data_files=file_path + training, split='train')
-with open('test_2.json', 'w') as f:
+with open('test_huggingface:2.json', 'w') as f:
     with redirect_stdout(f):
         print(dataset_one)
         print("**********")

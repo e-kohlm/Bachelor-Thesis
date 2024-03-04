@@ -20,25 +20,19 @@ from contextlib import redirect_stdout
 import tensorflow as tf
 from gensim.models import Word2Vec, KeyedVectors
 
-# TODO: von VUDENC geklaut, insofern sollt ich das villeicht auch in eine extra dir: VUDENC_src packen
-
+# TODO: von VUDENC geklaut, allerdings wird hier nicht makemodel gemacht. Insofern solle ich den vielleicht umbenennen
+# TODO: A bit of
 """
-run from /src with command nice -n 19 python3 VUDENC_make_model.py sql
-Running without error with sql as example
-Input files: 
-plain_sql
-and if w2v is needed:
-word2vec_withString10-100-200.model
-word2vec_withString10-100-200.model.syn1neg.npy
-word2vec_withString10-100-200.model.wv.vectors.npy
-
-Created are the files:  
-- sql_dataset_finaltest_X
-- sql_dataset_finaltest_Y
-- sql_dataset_keysfinaltest
-- sql_dataset_keystest
-- sql_dataset_keystrain
+This code was first implemented in VUDENC, a few changes are made:
+- the code snippets are stored differently, so they can be used with a Hugging Face model for finetuning.
+  The data itself has not been changed.  
+- But there is no w2v vectorization made, since the transformer model itself takes care of it.
+- some comments were added or rather a few changes to variables etc. if it helps for understanding
+- unused code was removed
 """
+
+
+
 
 ###main####
 # default mode / type of vulnerability
@@ -56,114 +50,72 @@ restriction = [20000, 5, 6, 10]  # which samples to filter out
 step = 5  # step lenght n in the description
 fulllength = 200  # context length m in the description
 
+# TODO: Start with the original plain_sql, download it again before submitting!
 
 # load data
-with (open('../VUDENC_data/plain_' + mode, 'r') as infile):  # Input if mode=sql, dann der File plain_sql from Code/data usw.
+with (open('../VUDENC_data/plain_' + mode, 'r') as infile):
     data = json.load(infile)
-    # print("data: ", data) # Daten sind da
 
 now = datetime.now()  # current date and time
 nowformat = now.strftime("%H:%M")
 print("finished loading. ", nowformat)
 
-### meins ###### filtering of unwanted code, I think
+# Vulnerable code snippets are distinguished from not vulnerable code snippets and labeled accordingly
+
 allblocks = []
-
-"""print("type data: ", type(data))             # it is a dict
-with open('keys_plain_sql.txt', 'w') as f:      # keys sind die repositories, also r
-    with redirect_stdout(f):
-        print("keys: ", data.keys())"""
-
-
-b_dict = {}
-i = 0               # TODO: weg
-for r in data:  # repository
-    i += 1          # TODO: rausnehmen,nur zum testen, damit ich kleinere Datensätze bekommen!!!
-    if i < 4:      # TODO: weg
+snippet_id = 0      # TODO: das ist auch das, was Laura als snippet bezeichnet, oder?
+i = 0               # TODO: Just for the example, the feasibility test, remove later
+for repository in data:
+    i += 1          # TODO: Just for the example, the feasibility test, remove later
+    if i < 4:       # TODO: Just for the example, the feasibility test, remove later
     
         progress = progress + 1
         print("\nprogress: ", progress)
-        print("r: ", r)
+        print("repo: ", repository)
 
-        for c in data[r]:  # commit
-            print("c: ", c)
+        for commit in data[repository]:
+            print("commit: ", commit)
 
-            if "files" in data[r][c]:            
-                #  if len(data[r][c]["files"]) > restriction[3]:
-                # too many files
-                #    continue
-                # print("files: ", data[r][c]) # hier kommt was
-                for f in data[r][c]["files"]:   # files f = xxx.py
-                    #print("f: ", f)
-
-                    #      if len(data[r][c]["files"][f]["changes"]) >= restriction[2]:
-                    # too many changes in a single file
-                    #       continue
-
-                    if not "source" in data[r][c]["files"][f]:
-                        #print("no sourcecode")
-                        # no sourcecode
+            if "files" in data[repository][commit]:
+                for f in data[repository][commit]["files"]:
+                    if not "source" in data[repository][commit]["files"][f]:
                         continue
-
-                    if "source" in data[r][c]["files"][f]:
-                        sourcecode = data[r][c]["files"][f]["source"]
-                        #print("sourcecode", sourcecode)
-                        #     if len(sourcecode) > restriction[0]:
-                        # sourcecode is too long
-                        #       continue
+                    if "source" in data[repository][commit]["files"][f]:
+                        sourcecode = data[repository][commit]["files"][f]["source"]
 
                         allbadparts = []
-
-                        for change in data[r][c]["files"][f]["changes"]:
-
+                        for change in data[repository][commit]["files"][f]["changes"]:
                             # get the modified or removed parts from each change that happened in the commit
                             badparts = change["badparts"]
-                            # print("count y: ", count)
                             count = count + len(badparts)
-                            # print("count x: ", count)
-
-                            #     if len(badparts) > restriction[1]:
-                            # too many modifications in one change
-                            #       break
 
                             for bad in badparts:
-                                # print("bad ", bad)
-                                # check if they can be found within the file
                                 pos = VUDENC_utils.findposition(bad, sourcecode)
-                                #print("pos ", pos)
                                 if not -1 in pos:
-                                    # print("pos ", pos)
                                     allbadparts.append(bad)
                         if len(allbadparts) > 0:
-                            #print("XXXX:", len(allbadparts))
-                            #   if len(allbadparts) < restriction[2]:
-                            # find the positions of all modified parts
                             positions = VUDENC_utils.findpositions(allbadparts, sourcecode)
-                            #print("positions: ", positions)
+
                             # get the file split up in samples
                             blocks = VUDENC_utils.getblocks(sourcecode, positions, step, fulllength)
-                            """with open('blocks.json', 'w') as f:
-                                with redirect_stdout(f):
-                                    print("r: ", r)
-                                    print("c: ", c)
-                                    print("f: ", f)
-                                    print("blocks: ", blocks)"""
 
-                            for b in blocks:
-                                with open('one block.json', 'w') as f:
+                            for b in blocks:  # each block is a tuple of code and label
+                                """
+                                In VUDENC a block was stored in a list, now it is stored in a dictionary 
+                                """
+                                block_dict = {}
+                                """with open('test_one_block.json', 'w') as f:
                                     with redirect_stdout(f):
-                                        print("b: ", b)     # das ist eine Liste: b[0] ist Code, b[1] ist Label
-                                                            # each is a tuple of code and label
-                                # meins: turn into dictionary
-                                b_dict['code'] = b[0]
-                                b_dict['label'] = b[1]
-                                allblocks.append(b_dict)
+                                        print("b: ", b)"""
+                                # Save each code snippet with its label (vulnerable = 1, not vulnerable = 0) in a dict
+                                block_dict['snippet_id'] = snippet_id
+                                block_dict['code'] = b[0]
+                                block_dict['label'] = b[1]
+                                allblocks.append(block_dict)
+                                snippet_id += 1
 
 
-# bis hier: Data labeling in vulnerable, not vulnerable
-
-
-with open('allblocks.json', 'w') as f:
+with open('test_allblocks.json', 'w') as f:
     with redirect_stdout(f):
         print(allblocks)
 
@@ -172,15 +124,16 @@ with open('allblocks.json', 'w') as f:
 
 ############## meins######
 ##### allblocks [] ist der komplett code nach filtering
-# print("type allblocks: ", type(allblocks)) # allblocks ist eine Liste fon Listen
+
 
 keys = []
 
 # randomize the sample and split into train, validate and final test set
+print("snippet_id: ", snippet_id)
 print("len allblocks: ", len(allblocks)) #len allblocks:  284599
 for i in range(len(allblocks)):
-    #print("i, allblocks[i]: ", i, ",", allblocks[i])
     keys.append(i)
+
 random.shuffle(keys)
 
 cutoff = round(0.7 * len(keys))  # 70% for the training set
@@ -194,16 +147,12 @@ print("cutoff " + str(cutoff))  # TODO: VUDENC auf gruenau: 199219 - und auch at
 print("cutoff2 " + str(cutoff2))  # TODO: VUDENC auf gruenau: 241909 - und auch at home
 
 
-# jeweils eine Liste von keys, sonst nichts
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset_keystrain', 'w') as fp:
-    # The pickle module implements binary protocols for serializing and de-serializing a Python object structure. “Pickling” is the process whereby a Python object hierarchy is converted into a byte stream,
-    #pickle.dump(keystrain, fp)  # pickle module not considered secure anymore
+# Save keys of three datasets to file
+with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset_keystrain', 'w') as fp:
     fp.write(str(keystrain))
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset_keysvalidation', 'w') as fp:
-    #pickle.dump(keystest, fp)
+with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset_keysvalidation', 'w') as fp:
     fp.write(str(keysvalidation))
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset_keysfinaltest', 'w') as fp:
-    #pickle.dump(keysfinaltest, fp)
+with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset_keysfinaltest', 'w') as fp:
     fp.write(str(keysfinaltest))
 
 training_set = []
@@ -213,7 +162,7 @@ test_set = []
 print("Creating training dataset... (" + mode + ")")
 for k in keystrain:
     block = allblocks[k]
-    training_set.append(block)
+    training_set.append(block)  # TODO: hier wird immer nur snippet id 3956 angehängt
 
 print("Creating validation dataset...")
 for k in keysvalidation:
@@ -224,18 +173,20 @@ print("Creating finaltest dataset...")
 for k in keysfinaltest:
     block = allblocks[k]
     test_set.append(block)
+
 print("Train length: " + str(len(training_set)))  #
 print("Validation length: " + str(len(validation_set))) #593
 print("Testing length: " + str(len(test_set)))  # 594
-now = datetime.now()  # current date and time
+
+now = datetime.now()
 nowformat = now.strftime("%H:%M")
 print("time: ", nowformat)
 ######################################################
 
 # saving samples
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset-TRAINING', 'w') as fp:
+with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset-TRAINING', 'w') as fp:
     fp.write(json.dumps(training_set))
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset-VALIDATION', 'w') as fp:
+with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset-VALIDATION', 'w') as fp:
     fp.write(json.dumps(validation_set))
-with open('../VUDENC_data/' + 'elke_' + mode + '_dataset-TESTING', 'w') as fp:
+with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset-TESTING', 'w') as fp:
     fp.write(json.dumps(test_set))

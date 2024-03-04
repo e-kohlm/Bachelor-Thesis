@@ -31,7 +31,15 @@ from termcolor import colored
 
 # TODO: von VUDENC geklaut, insofern sollt ich das villeicht auch in eine extra dir: VUDENC_src packen
 # TODO: Comment, dass ich das zwar geklaut habe, aber Lesbarkeit verbessert
-  
+# TODO: remove unused code
+# TODO: Comment changes
+"""
+This code was first implemented in VUDENC, only minor changes are made:
+- the variable 'q' was renamed to 'label' and the values of label were exchanged (0 to 1 and vice versa),
+  instead of exchanging the values later on in VUDENC_make_model.py    
+- unused code was removed
+- some comments were added
+"""
 
 def findComments(sourcecode):
     print("Elke: findComments is used.")
@@ -119,7 +127,6 @@ def findposition(badpart,sourcecode):
                 d = badpart[matchindex+1]
             if (a != b) and (a == " " or a == "\n") and ((b in splitchars) or (c in splitchars)):
                 pos = pos+1
-                # TODO: If I comment continue out, variable pos is marked as used
                 continue
             if (a != b) and (b == " " or b == "\n"):
                 #print("here")
