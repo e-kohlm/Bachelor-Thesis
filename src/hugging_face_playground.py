@@ -1,10 +1,12 @@
 import torch
-from transformers import AdamW, AutoTokenizer, AutoModelForSequenceClassification
+from transformers import pipeline
 from datasets import load_dataset
 from datasets import load_dataset_builder
 import numpy as np
 import codecs
 from contextlib import redirect_stdout
+from transformers import BertConfig, BertModel
+
 
 
 # datasets from huggingface, docs: https://huggingface.co/docs/datasets/en/installation
@@ -14,7 +16,7 @@ from contextlib import redirect_stdout
 #raw_datasets = load_dataset("glue", "mrpc")
 #print(raw_datasets)
 
-file_path = "../VUDENC_data/"
+"""file_path = "../VUDENC_data/"
 plain_sql = "plain_sql"
 finaltest_x = "sql_dataset_finaltest_X"
 training = "EXAMPLE_sql_dataset-TRAINING"
@@ -47,7 +49,7 @@ with open('test_huggingface:2.json', 'w') as f:
     with redirect_stdout(f):
         print(dataset_one)
         print("**********")
-        print(dataset_one.features)
+        print(dataset_one.features)"""
 
 
 
@@ -61,11 +63,29 @@ with open('test_huggingface:2.json', 'w') as f:
 #print(ds_builder.info.features)
 
 
+# Building the config
+config = BertConfig()
+
+# Building the model from the config
+#model = BertModel(config)
+
+model = BertModel.from_pretrained("bert-base-cased")
+print(config)
 
 
+# pipeline
+question_answerer = pipeline("question-answering")
+question_answerer(
+    question="I this code vulnerable?",
+    context="with open('test_huggingface_1.json', 'w') as f: with redirect_stdout(f): print(train_dataset[0]) print(train_dataset[1]) print(dataset['train'][-1]) '])",
+)
 
 
-
+classifier = pipeline("zero-shot-classification")
+classifier(
+    "with open('test_huggingface_1.json', 'w') as f: with redirect_stdout(f): print(train_dataset[0]) print(train_dataset[1]) print(dataset['train'][-1]) '])",
+    candidate_labels=["vulnerable code", "not vulnerable code"],
+)
 
 
 
