@@ -71,7 +71,7 @@ elapsed_time = end_time - start_time
 print("elapsed_time: ", time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
 
 
-
+# TODO: siehe playground.py model scheint hier auch nicht das Richtige zu seins
 
 
 
