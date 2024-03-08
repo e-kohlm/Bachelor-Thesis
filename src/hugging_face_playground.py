@@ -63,8 +63,8 @@ with open('test_huggingface:2.json', 'w') as f:
 #print(ds_builder.info.features)
 
 
-"""# Building the config
-config = BertConfig()
+# Building the config
+"""config = BertConfig()
 
 # Building the model from the config
 #model = BertModel(config)
@@ -73,31 +73,25 @@ model = BertModel.from_pretrained("bert-base-cased")
 print(config)"""
 
 
-# pipelines
-"""Not working: 
-No model was supplied, defaulted to distilbert-base-uncased-finetuned-sst-2-english and revision af0f99b (https://huggingface.co/distilbert-base-uncased-finetuned-sst-2-english).
-Using a pipeline without specifying a model name and revision in production is not recommended."""
-
-classifier = pipeline("sentiment-analysis")
-output = classifier("I've been waiting for a HuggingFace course my whole life.")
-print(output)
+# pipeline
+classifiert = pipeline("sentiment-analysis")
+sa_output = classifiert("I've been waiting for a HuggingFace course my whole life.")
+print("sa_output:", sa_output, "\n")
 
 question_answerer = pipeline("question-answering")
-output = question_answerer(
-    question="I this code vulnerable?",
-    context="with open('test_huggingface_1.json', 'w') as f: with redirect_stdout(f):"
-            " print(train_dataset[0]) print(train_dataset[1]) print(dataset['train'][-1]) '])"
+qa_output = question_answerer(
+    question="I this code?",
+    context="with open('test_huggingface_1.json', 'w') as f: with redirect_stdout(f): print(train_dataset[0])" + 
+    "print(train_dataset[1]) print(dataset['train'][-1]) '])",
 )
-print(output)
-
+print("qa_output :", qa_output, "\n")
 
 classifier = pipeline("zero-shot-classification")
-output = classifier(
-    "with open('test_huggingface_1.json', 'w') as f: with redirect_stdout(f):"
-    " print(train_dataset[0]) print(train_dataset[1]) print(dataset['train'][-1]) '])",
+zsc_output = classifier(
+    "with open('test_huggingface_1.json', 'w') as f: with redirect_stdout(f): print(train_dataset[0]) print(train_dataset[1]) print(dataset['train'][-1]) '])",
     candidate_labels=["vulnerable code", "not vulnerable code"],
 )
-print(output)
+print("zsc_output: ", zsc_output, "\n")
 
 
 
