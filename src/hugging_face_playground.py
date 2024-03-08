@@ -1,5 +1,5 @@
 import torch
-from transformers import pipeline
+from transformers import AutoTokenizer, AutoModel, pipeline
 from datasets import load_dataset
 from datasets import load_dataset_builder
 import numpy as np
@@ -8,6 +8,65 @@ from contextlib import redirect_stdout
 from transformers import BertConfig, BertModel
 
 
+
+
+# Building the config
+"""config = BertConfig()
+
+# Building the model from the config
+#model = BertModel(config)
+
+model = BertModel.from_pretrained("bert-base-cased")
+print(config)"""
+
+checkpoint = "distilbert-base-uncased-finetuned-sst-2-english"
+tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+
+raw_inputs = [
+    "I've been waiting for a HuggingFace course my whole life.",
+    "I hate this so much!",
+]
+inputs = tokenizer(raw_inputs, padding=True, truncation=True, return_tensors="pt")
+print("\n############################################")
+print("inputs: ", inputs, "\n############################################\n")
+model = AutoModel.from_pretrained(checkpoint)
+
+outputs = model(**inputs)
+print("outputs.last_hidden_state.shape: ", outputs.last_hidden_state.shape, "\n############################################\n")
+
+# pipeline
+"""
+Wirft auch was aus, aber: 
+No model was supplied, defaulted to distilbert/distilbert-base-uncased-finetuned-sst-2-english and revision af0f99b (https://huggingface.co/distilbert/distilbert-base-uncased-finetuned-sst-2-english).
+Using a pipeline without specifying a model name and revision in production is not recommended.
+"""
+classifiert = pipeline("sentiment-analysis")
+sa_output = classifiert("I've been waiting for a HuggingFace course my whole life.")
+print("sa_output:", sa_output, "\n")
+
+question_answerer = pipeline("question-answering")
+qa_output = question_answerer(
+    question="I this code?",
+    context="with open('test_huggingface_1.json', 'w') as f: with redirect_stdout(f): print(train_dataset[0])" + 
+    "print(train_dataset[1]) print(dataset['train'][-1]) '])",
+)
+print("qa_output :", qa_output, "\n")
+
+classifier = pipeline("zero-shot-classification")
+zsc_output = classifier(
+    "with open('test_huggingface_1.json', 'w') as f: with redirect_stdout(f): print(train_dataset[0]) print(train_dataset[1]) print(dataset['train'][-1]) '])",
+    candidate_labels=["vulnerable code", "not vulnerable code"],
+)
+print("zsc_output: ", zsc_output, "\n")
+
+# TODO: irgendwo bei huggingface , evtl. bei finetunig, um daten kennenzulernen
+
+#ds_builder = load_dataset_builder(file_path + finaltest_x, data_files=data_files)
+#print("ds_builder: ", ds_builder)
+
+#print(ds_builder.info.description)
+
+#print(ds_builder.info.features)
 
 # datasets from huggingface, docs: https://huggingface.co/docs/datasets/en/installation
 
@@ -50,49 +109,6 @@ with open('test_huggingface:2.json', 'w') as f:
         print(dataset_one)
         print("**********")
         print(dataset_one.features)"""
-
-
-
-# TODO: irgendwo bei huggingface , evtl. bei finetunig, um daten kennenzulernen
-
-#ds_builder = load_dataset_builder(file_path + finaltest_x, data_files=data_files)
-#print("ds_builder: ", ds_builder)
-
-#print(ds_builder.info.description)
-
-#print(ds_builder.info.features)
-
-
-# Building the config
-"""config = BertConfig()
-
-# Building the model from the config
-#model = BertModel(config)
-
-model = BertModel.from_pretrained("bert-base-cased")
-print(config)"""
-
-
-# pipeline
-classifiert = pipeline("sentiment-analysis")
-sa_output = classifiert("I've been waiting for a HuggingFace course my whole life.")
-print("sa_output:", sa_output, "\n")
-
-question_answerer = pipeline("question-answering")
-qa_output = question_answerer(
-    question="I this code?",
-    context="with open('test_huggingface_1.json', 'w') as f: with redirect_stdout(f): print(train_dataset[0])" + 
-    "print(train_dataset[1]) print(dataset['train'][-1]) '])",
-)
-print("qa_output :", qa_output, "\n")
-
-classifier = pipeline("zero-shot-classification")
-zsc_output = classifier(
-    "with open('test_huggingface_1.json', 'w') as f: with redirect_stdout(f): print(train_dataset[0]) print(train_dataset[1]) print(dataset['train'][-1]) '])",
-    candidate_labels=["vulnerable code", "not vulnerable code"],
-)
-print("zsc_output: ", zsc_output, "\n")
-
 
 
 # sql_dataset_finaltest_X ist vom Type: Binary(application/octet-stream)
