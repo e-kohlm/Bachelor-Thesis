@@ -1,5 +1,9 @@
 import torch
-from transformers import AutoTokenizer, AutoModel, pipeline
+from transformers import (AutoTokenizer,
+                            AutoModel,
+                            AutoModelForSequenceClassification,
+                            AutoModelForQuestionAnswering,
+                            pipeline)
 from datasets import load_dataset
 from datasets import load_dataset_builder
 import numpy as np
@@ -7,41 +11,59 @@ import codecs
 from contextlib import redirect_stdout
 from transformers import BertConfig, BertModel
 
-
-
-
-# Building the config
-"""config = BertConfig()
-
-# Building the model from the config
-#model = BertModel(config)
-
-model = BertModel.from_pretrained("bert-base-cased")
-print(config)"""
-
+# 3 steps a pipeline does
+# Step 1 Tokenize
 checkpoint = "distilbert-base-uncased-finetuned-sst-2-english"
 tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-
 raw_inputs = [
     "I've been waiting for a HuggingFace course my whole life.",
     "I hate this so much!",
 ]
-inputs = tokenizer(raw_inputs, padding=True, truncation=True, return_tensors="pt")
+inputs = tokenizer(raw_inputs, padding=True, truncation=True, return_tensors="pt") # pt means pytorch
 print("\n############################################")
 print("inputs: ", inputs, "\n############################################\n")
+
+# Step 2 Model
 model = AutoModel.from_pretrained(checkpoint)
-
 outputs = model(**inputs)
-print("outputs.last_hidden_state.shape: ", outputs.last_hidden_state.shape, "\n############################################\n")
+print("outputs.last_hidden_state.shape: ", outputs.last_hidden_state.shape)
+print("\n############################################")
+model_eins = AutoModelForSequenceClassification.from_pretrained(checkpoint)
+outputs_eins = model_eins(**inputs)
+#print("outputs_eins.last_hidden_state.shape: ", outputs_eins.last_hidden_state.shape, "\n############################################\n")
+# AttributeError: 'SequenceClassifierOutput' object has no attribute 'last_hidden_state'
+print("outputs_eins.logits.shape: ", outputs_eins.logits.shape)
+print("outputs_eins.logits: ", outputs_eins.logits)
 
-# pipeline
+#Step 3 Postprocessing
+predictions = torch.nn.functional.softmax(outputs_eins.logits, dim=-1)
+print("predictions: ", predictions)
+print("labels: ", model.config.id2label)
+
+"""
+Now we can conclude that the model predicted the following:
+    First sentence: NEGATIVE: 0.0402, POSITIVE: 0.9598
+    Second sentence: NEGATIVE: 0.9995, POSITIVE: 0.0005
+"""
+
+
+print("\n############################################")
+#model_zwei = AutoModelForQuestionAnswering.from_pretrained(checkpoint)
+#outputs_zwei = model_zwei(**inputs)
+#print("outputs_zwei.last_hidden_state.shape: ", outputs_zwei.last_hidden_state.shape, "\n############################################\n")
+#AttributeError: 'QuestionAnsweringModelOutput' object has no attribute 'last_hidden_state'
+#print("outputs_zwei.logits.shape: ", outputs_zwei.logits.shape, "\n############################################\n")
+#print("outputs_zwei.logits: ", outputs_zwei.logits, "\n############################################\n")
+#AttributeError: 'QuestionAnsweringModelOutput' object has no attribute 'logits'
+
+# pipeline (three steps from above automatically)
 """
 Wirft auch was aus, aber: 
 No model was supplied, defaulted to distilbert/distilbert-base-uncased-finetuned-sst-2-english and revision af0f99b (https://huggingface.co/distilbert/distilbert-base-uncased-finetuned-sst-2-english).
 Using a pipeline without specifying a model name and revision in production is not recommended.
 """
-classifiert = pipeline("sentiment-analysis")
-sa_output = classifiert("I've been waiting for a HuggingFace course my whole life.")
+classifier = pipeline("sentiment-analysis")
+sa_output = classifier("I've been waiting for a HuggingFace course my whole life.")
 print("sa_output:", sa_output, "\n")
 
 question_answerer = pipeline("question-answering")
