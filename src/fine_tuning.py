@@ -1,11 +1,12 @@
 import torch
-from transformers import AutoTokenizer, T5ForConditionalGeneration, AutoModelForSequenceClassification 
+from transformers import AutoTokenizer, T5ForConditionalGeneration, AutoModelForSeq2SeqLM, AutoModelForSequenceClassification 
 from datasets import load_dataset
 from datasets import load_dataset_builder
 import numpy as np
 import codecs
 from contextlib import redirect_stdout
 import time
+
 
 
 file_path = "../VUDENC_data/"
@@ -40,10 +41,16 @@ print("elapsed_time: ", time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))"""
 
 # CodeT5
 checkpoint = "Salesforce/codet5p-220m"
-device = "cpu" # for GPU usage or "cpu" for CPU usage
+device = "cpu" # "cuda" for GPU usage or "cpu" for CPU usage
 
 tokenizer = AutoTokenizer.from_pretrained(checkpoint)
 model = T5ForConditionalGeneration.from_pretrained(checkpoint).to(device)
+
+# Code T5 from extra code on the right: TODO: welches soll ich nutzen???? wo finde ich solche Infos?
+# Load model directly
+#tokenizer = AutoTokenizer.from_pretrained("Salesforce/codet5p-220m")
+#model = AutoModelForSeq2SeqLM.from_pretrained("Salesforce/codet5p-220m")
+
 
 # From Hugging Face working
 """inputs = tokenizer.encode("def print_hello_world():<extra_id_0>", return_tensors="pt").to(device)
@@ -53,25 +60,22 @@ print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 
 start_time = time.time()
 i = 1
-for snippet in train_dataset:
+for snippet in train_dataset['code']:
     print("\n############################################")
     print("i: ", i)  # num_rows: 2770 == i
-
-    # not working: encodings = self._tokenizer.encode_batch(
-    #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    #TypeError: TextEncodeInput must be Union[TextInputSequence, Tuple[InputSequence, InputSequence]]
-    print("type: ", type(train_dataset['code']))
-
-    inputs = tokenizer.encode(train_dataset['code'], return_tensors="pt").to(device)
-    outputs = model.generate(inputs)   
+    print("snippet: ", snippet)       
+    inputs = tokenizer.encode(snippet, return_tensors="pt").to(device)
+    #print("inputs: ", inputs)
+    outputs = model.generate(inputs)
     i += 1
+
 
 end_time = time.time()
 elapsed_time = end_time - start_time
 print("elapsed_time: ", time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
 
 
-# TODO: siehe playground.py model scheint hier auch nicht das Richtige zu seins
+
 
 
 
