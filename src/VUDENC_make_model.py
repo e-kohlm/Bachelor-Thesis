@@ -125,6 +125,7 @@ with open('test_allblocks.json', 'w') as f:
 ############## meins######
 ##### allblocks [] ist der komplett code nach filtering
 
+#######################################WORKING BUT NOT NECESSARY#########################
 
 keys = []
 
@@ -184,9 +185,21 @@ print("time: ", nowformat)
 ######################################################
 
 # saving samples
-with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset-TRAINING', 'w') as fp:
+"""with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset-TRAINING', 'w') as fp:
+    fp.write(json.dumps(training_set))"""
+
+# Nur für jetzt, damit ich selbe Länge habe
+with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset', 'w') as fp:
     fp.write(json.dumps(training_set))
-with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset-VALIDATION', 'w') as fp:
+
+"""with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset-VALIDATION', 'w') as fp:
     fp.write(json.dumps(validation_set))
 with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset-TESTING', 'w') as fp:
-    fp.write(json.dumps(test_set))
+    fp.write(json.dumps(test_set))"""
+
+######## BIS hier für splitting daten
+
+
+"""# ohne splitting geht  das dann wohl einfach so: 
+with open('../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset', 'w') as fp:
+    fp.write(json.dumps(allblocks))"""
