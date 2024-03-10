@@ -180,16 +180,12 @@ for snippet in datasets:
 
 
 
-def tokenize_function(datasets):    
-    return tokenizer(datasets['code'], truncation=True) 
-
-
-
-
+def tokenize_function(datasets):
+    print("datasets['code']", datasets['code'])    
+    return tokenizer(datasets['code'], truncation=True)  # TODO truncation will ich eigentlich nicht
 
 
 tokenized_datasets = datasets.map(tokenize_function, batched=True)
-print("tokenized_datasets: ", tokenized_datasets)
 tokenized_datasets = tokenized_datasets.remove_columns(["snippet_id"])
 tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
 tokenized_datasets.set_format("torch")
@@ -263,28 +259,8 @@ def compute_metrics(eval_preds):
     predictions = np.argmax(logits, axis=-1)
     return metric.compute(predictions=predictions, references=labels)
 
-preds = np.argmax(predictions.predictions, axis=-1)
+preds_train = np.argmay(predictions_train.predictions, axis=-1)
+preds_eval = np.argmax(predictions_eval.predictions, axis=-1)
 
 metric = evaluate.load("json", data_files=data_files)
-metric.compute(predictions=preds, references=predictions.label_ids)
-
-
-
-
-    
-
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+metric.compute(predictions=preds_train, references=predictions.train.label_ids)
