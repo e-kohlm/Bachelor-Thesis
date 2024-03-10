@@ -12,6 +12,7 @@ from transformers import (
 from datasets import load_dataset
 from datasets import load_dataset_builder
 import numpy as np
+import evaluate
 import codecs
 from contextlib import redirect_stdout
 from torch.utils.data import DataLoader
@@ -130,19 +131,33 @@ for snippet in train_dataset['code']:
 
 # CodeT5
 
-dataset = load_dataset(path="json", data_files=file_path + raw_datasets)
+datasets = load_dataset(path="json", data_files=file_path + raw_datasets)
 checkpoint = "Salesforce/codet5p-220m"
 device = "cpu" # "cuda" for GPU usage or "cpu" for CPU usage
-
 tokenizer = AutoTokenizer.from_pretrained(checkpoint, num_labels=2)
-#model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=2)
-model = T5ForConditionalGeneration.from_pretrained(checkpoint).to(device)
+model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=2)
+#model = T5ForConditionalGeneration.from_pretrained(checkpoint).to(device)
 
-def tokenize_function(raw_datasets):
+
+# train a sequence classifier
+batch = tokenizer(datasets, padding=True, truncation=True, return_tensors="pt")
+
+# This is new
+batch["labels"] = torch.tensor([1, 1])
+
+optimizer = torch.optim.AdamW(model.parameters())
+loss = model(**batch).loss
+loss.backward()
+optimizer.step()
+
+
+
+
+def tokenize_function(datasets):
     print("tokenizer: ", tokenizer)
-    return tokenizer(raw_datasets['code'], truncation=True)
+    return tokenizer(datasets['code'], truncation=True)
 
-tokenized_datasets = dataset.map(tokenize_function, batched=True)
+tokenized_datasets = datasets.map(tokenize_function, batched=True)
 print("tokenized_datasets: ", tokenized_datasets)
 tokenized_datasets = tokenized_datasets.remove_columns(["snippet_id"])
 tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
@@ -151,8 +166,22 @@ tokenized_datasets["train"].column_names
 print("AGAIN tokenized_datasets: ", tokenized_datasets)
 
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+# test
+samples = tokenized_datasets["train"][:8]
+samples = {k: v for k, v in samples.items() if k not in ["idx", "sentence1", "sentence2"]}
+[len(x) for x in samples["input_ids"]]
+print("samples: ", samples)
 
-training_args = TrainingArguments("test-trainer")
+
+batch = data_collator(samples)
+{k: v.shape for k, v in batch.items()}
+print("batch: ", batch)
+
+###########
+
+training_args = TrainingArguments("test-trainer", evaluation_strategy="epoch")
+
+
 
 
 train_dataloader = DataLoader(
@@ -173,24 +202,23 @@ trainer = Trainer(
 
 start_time = time.time()
 
-#batch = tokenizer(snippet, padding=True, truncation=True, return_tensors="pt")
-
-# This is new
-#batch["labels"] = torch.tensor([0, 1])
-
-#optimizer = torch.optim.AdamW(model.parameters())
-#loss = model(**batch).loss
-#loss.backward()
-#optimizer.step()
-
-
-
-
-
-
-
-
 trainer.train()
+
+predictions = trainer.predict(tokenized_datasets["validation"])
+print(predictions.predictions.shape, predictions.label_ids.shape)
+
+def compute_metrics(eval_preds):
+    metric = evaluate.load("glue", "mrpc")
+    logits, labels = eval_preds
+    predictions = np.argmax(logits, axis=-1)
+    return metric.compute(predictions=predictions, references=labels)
+
+preds = np.argmax(predictions.predictions, axis=-1)
+
+metric = evaluate.load("glue", "mrpc")
+metric.compute(predictions=preds, references=predictions.label_ids)
+
+
 
 
 end_time = time.time()
