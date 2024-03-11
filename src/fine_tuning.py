@@ -142,9 +142,9 @@ print("datasets: ", datasets)
 checkpoint = "Salesforce/codet5p-220m"
 device = "cpu" # "cuda" for GPU usage or "cpu" for CPU usage
 tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-model = AutoModelForSequenceClassification.from_pretrained(checkpoint)
+#model = AutoModelForSequenceClassification.from_pretrained(checkpoint) # damit lief es durch bis evaluation zeug
 #model = AutoModelForSeq2SeqLM.from_pretrained(checkpoint)
-#model = T5ForConditionalGeneration.from_pretrained(checkpoint).to(device)
+model = T5ForConditionalGeneration.from_pretrained(checkpoint).to(device)
 
 """i = 1
 for snippet in datasets:
@@ -181,7 +181,7 @@ for snippet in datasets:
 
 
 def tokenize_function(datasets):
-    print("datasets['code']", datasets['code'])    
+    #print("datasets['code']", datasets['code']) # ist hier das Problem? werden die snippets zusammengehauen???   
     return tokenizer(datasets['code'], truncation=True)  # TODO truncation will ich eigentlich nicht
 
 
@@ -220,14 +220,28 @@ train_dataloader = DataLoader(
 eval_dataloader = DataLoader(
     tokenized_datasets["validation"], batch_size=8, collate_fn=data_collator
 )
+
+# Check     #hier stoplpert er, es stimmt also was nicht
+# der check ist aus dem tutorial
+for batch in train_dataloader:
+    print("batch", batch)
+    break
+{k: v.shape for k, v in batch.items()}
+print("batch", batch)
+
+
 print("train_dataloader: ", train_dataloader)
 print("eval_dataloader: ", eval_dataloader)
+print("shape: ", tokenized_datasets.shape)
+
+
+
 
 trainer = Trainer(
     model,
     training_args,
     train_dataset=tokenized_datasets["train"],
-    eval_dataset=tokenized_datasets["validation"],  # findet der nicht, warum findet er train_dataset?
+    eval_dataset=tokenized_datasets["validation"],  
     #test_dataset=tokenized_datasets["test"], # das nennt der unerwartetes Argument
     data_collator=data_collator,
     tokenizer=tokenizer,
@@ -235,6 +249,11 @@ trainer = Trainer(
 
 start_time = time.time()
 print("start_time: ", start_time)
+
+print("trainer.model: ", trainer.model)
+print("training_args: ", training_args)
+#print("trainer.data_collator: ", trainer.data_collator)
+#print("trainer.tokenizer: ", trainer.tokenizer)
 
 trainer.train()  #TODO, not working with T5: ValueError: not enough values to unpack (expected 2, got 1)
 
