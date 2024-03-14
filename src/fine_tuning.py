@@ -282,4 +282,4 @@ preds_train = np.argmay(predictions_train.predictions, axis=-1)
 preds_eval = np.argmax(predictions_eval.predictions, axis=-1)
 
 metric = evaluate.load("json", data_files=data_files)
-metric.compute(predictions=preds_train, references=predictions.train.label_ids)
+metric.compute(predictions=preds_train, references=predictions_train.train.label_ids)
