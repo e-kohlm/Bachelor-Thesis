@@ -7,15 +7,17 @@ Date: June 2023
 """
 
 import os
+import time
 import pprint
 import argparse
 from datasets import load_dataset, load_from_disk
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, TrainingArguments, Trainer
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, TrainingArguments, Trainer, AutoModelForSequenceClassification,
 import json
 
 
 def run_training(args, model, train_data):
     print(f"Starting main loop")
+    start_time = time.time()
 
     training_args = TrainingArguments(
         report_to='tensorboard',
@@ -58,10 +60,15 @@ def run_training(args, model, train_data):
         final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint")
         model.save_pretrained(final_checkpoint_dir)
         print(f'  ==> Finish training and save to {final_checkpoint_dir}')
+    
+    
+    end_time = time.time()
+    time_elapsed = end_time - start_time
+    print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)))
 
 
 def load_tokenize_data(args):
-    #print("args: ", args))
+    
    
 
     # Load and tokenize data
@@ -74,14 +81,10 @@ def load_tokenize_data(args):
         #datasets = load_dataset("code_x_glue_ct_code_to_text", 'python', split="train")
         
         file_path = "../VUDENC_data/"
-        training_set = "EXAMPLE_sql_dataset"
-        #validation_set = "EXAMPLE_sql_dataset-VALIDATION"
-        #test_set = "EXAMPLE_sql_dataset-TESTING"
-        #raw_datasets = "EXAMPLE_sql_dataset"
+        training_set = "EXAMPLE_sql_dataset"        
         data_files = {file_path + training_set}
         datasets = load_dataset("json", data_files=data_files, split='train')
-        print("datasets: ", datasets)
-        print("hier wird geladen")
+        print("datasets: ", datasets)       
 
 
 
@@ -115,11 +118,7 @@ def load_tokenize_data(args):
         return train_data
 
 
-def main(args):
-    #file_path = "../VUDENC_data/"
-    #training_set = "EXAMPLE_sql_dataset-TRAINING"
-    #data_files = file_path + training_set
-    #args ={data_files}
+def main(args):    
     argsdict = vars(args)
     print(pprint.pformat(argsdict))
 
@@ -129,16 +128,7 @@ def main(args):
 
     # Load and tokenize data using the tokenizer from `args.load`. If the data is already cached, load it from there.
     # You can customize this function to load your own data for any Seq2Seq LM tasks.
-    #file_path = "../VUDENC_data/"
-    #training_set = "EXAMPLE_sql_dataset-TRAINING"
-    #training_set = "sql_dataset_finaltest_X"
-    #data_files = {file_path + training_set}
-    #datasets = load_dataset("json", data_files=data_files)
-    #print("datasets: ", datasets)
-
-    """with (open(file_path + training_set, 'r') as infile):
-        args = load(infile)""" # ich bekomme liste
-    #args = datasets
+    
     train_data = load_tokenize_data(args)
 
     if args.data_num != -1:
@@ -148,6 +138,7 @@ def main(args):
     
     # Load model from `args.load`
     model = AutoModelForSeq2SeqLM.from_pretrained(args.load)
+    #model = AutoModelForSequenceClassification.from_pretrained(args.load)
     print(f"  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
 
     run_training(args, model, train_data)
