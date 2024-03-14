@@ -89,7 +89,7 @@ def load_tokenize_data(args):
         tokenizer = AutoTokenizer.from_pretrained(args.load)
 
         def preprocess_function(examples):           
-            print("examples", examples)
+            print("examples", examples)  # 44 snippets sind das hier jeweils, bzw. sind es 44 labels, die snippet_id wird auch angezeigt, wenn sie noch da istR
             source = [' '.join(ex) for ex in examples]
             target = [' '.join(ex) for ex in examples]
 
