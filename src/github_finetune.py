@@ -11,7 +11,7 @@ import time
 import pprint
 import argparse
 from datasets import load_dataset, load_from_disk
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, TrainingArguments, Trainer, AutoModelForSequenceClassification,
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, TrainingArguments, Trainer, AutoModelForSequenceClassification
 import json
 
 
@@ -86,13 +86,10 @@ def load_tokenize_data(args):
         datasets = load_dataset("json", data_files=data_files, split='train')
         print("datasets: ", datasets)       
 
-
-
         tokenizer = AutoTokenizer.from_pretrained(args.load)
 
-        def preprocess_function(examples):
-            print("hier")
-            print("examples[code]", examples)
+        def preprocess_function(examples):           
+            print("examples", examples)
             source = [' '.join(ex) for ex in examples]
             target = [' '.join(ex) for ex in examples]
 
