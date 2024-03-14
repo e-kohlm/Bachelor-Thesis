@@ -189,7 +189,7 @@ tokenized_datasets = datasets.map(tokenize_function, batched=True)
 tokenized_datasets = tokenized_datasets.remove_columns(["snippet_id"])
 tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
 tokenized_datasets.set_format("torch")
-tokenized_datasets.column_names
+#print("x ", tokenized_datasets['train'].column_names)
 print("AGAIN tokenized_datasets: ", tokenized_datasets)
 
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
@@ -220,11 +220,13 @@ train_dataloader = DataLoader(
 eval_dataloader = DataLoader(
     tokenized_datasets["validation"], batch_size=8, collate_fn=data_collator
 )
+print(train_dataloader)
+print(eval_dataloader)
 
 # Check     #hier stoplpert er, es stimmt also was nicht
 # der check ist aus dem tutorial
 for batch in train_dataloader:
-    print("batch", batch)
+    #print("batch", batch)
     break
 {k: v.shape for k, v in batch.items()}
 print("batch", batch)
