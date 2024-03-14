@@ -108,9 +108,9 @@ for repository in data:
                                     with redirect_stdout(f):
                                         print("b: ", b)"""
                                 # Save each code snippet with its label (vulnerable = 1, not vulnerable = 0) in a dict
-                                block_dict['snippet_id'] = snippet_id
+                                #block_dict['snippet_id'] = snippet_id  # TODO: weg damit, es wird später ohnehin neu geschuffelt. I guess
                                 block_dict['code'] = b[0]
-                                block_dict['label'] = b[1]
+                                block_dict['labels'] = b[1]
                                 allblocks.append(block_dict)
                                 snippet_id += 1
 
