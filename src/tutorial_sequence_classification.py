@@ -11,6 +11,8 @@ import evaluate
 import torch
 import numpy as np
 
+from contextlib import redirect_stdout # weg
+
 #https://huggingface.co/docs/transformers/tasks/sequence_classification
 #Guide shows how to finetune DistilBERT and use your finetuned model for inference
 #läuft so wie es ist durch, output gesichert in: test_outputs/sequence_classification_output.txt
@@ -25,7 +27,7 @@ raw_datasets = "EXAMPLE_sql_dataset"
 data_files = {"train": file_path + training_set, "validation": file_path + validation_set, "test": file_path + test_set}
 datasets = load_dataset("json", data_files=data_files)
 #print("datasets: ", datasets)
-print("datasets test: ", datasets['test'][0], "\n" )
+print("datasets test: ", datasets['train'][0], "\n" )
 
 # Find the max length of code snippet
 """i = 0
@@ -74,6 +76,7 @@ print("highest test: ", highest)  # highest test: 243"""
 #tokenizer = AutoTokenizer.from_pretrained(checkpoint)
 
 tokenizer = AutoTokenizer.from_pretrained("distilbert/distilbert-base-uncased")
+
 id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}
 label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}
 #model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=2, id2label=id2label, label2id=label2id)
@@ -84,12 +87,17 @@ model = AutoModelForSequenceClassification.from_pretrained(
                                                             label2id=label2id
                                                             )
 
+print("tokenizer model_max_length: ", tokenizer.model_max_length)                                                            
+
 def preprocess_function(examples):    
-    print("examples 0: ", examples["code"][0])
-    print("examples 53: ", examples["code"][53])
-    print("examples 200: ", examples["code"][200])    
+    with open('test_outputs/test_tutorial_sequence_classification_examples.txt', 'w') as f:
+        with redirect_stdout(f):
+            print("examples 0: ", examples["code"][0])
+            print("examples 53: ", examples["code"][53])
+            print("examples 200: ", examples["code"][200])    
     return tokenizer(examples["code"], truncation=True)  # truncate sequences to be no longer than DistilBERT’s maximum input length
 
+# Only done if not saved already ... where is this written?
 tokenized_datasets = datasets.map(preprocess_function, batched=True)  # You can speed up map by setting batched=True to process multiple elements of the dataset at once
 
 # Now create a batch of examples using DataCollatorWithPadding. It’s more efficient to dynamically pad the sentences
