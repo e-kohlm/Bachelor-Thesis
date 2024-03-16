@@ -78,18 +78,8 @@ def load_tokenize_data(args):  # 5.
         tokenizer = AutoTokenizer.from_pretrained(args.load)
 
         def preprocess_function(examples):           
-            #print("examples", examples)  # 44 snippets sind das hier jeweils, bzw. sind es 44 labels, die snippet_id wird auch angezeigt, wenn sie noch da istR
-            source = [' '.join(ex) for ex in examples]
-            target = [' '.join(ex) for ex in examples]
-
-            model_inputs = tokenizer(source, max_length=args.max_source_len, padding="max_length", truncation=True)
-            labels = tokenizer(target, max_length=args.max_target_len, padding="max_length", truncation=True)
-
-            model_inputs["labels"] = labels["input_ids"].copy()
-            model_inputs["labels"] = [
-                [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in model_inputs["labels"]
-            ]
-            return model_inputs
+            
+            return tokenizer(examples["code"], truncation=True)
 
         # Preprocess data
         train_data = datasets.map(
@@ -134,7 +124,7 @@ if __name__ == "__main__":  # Argumente
     parser = argparse.ArgumentParser(description="CodeT5+ finetuning on sequence classification task")
     parser.add_argument('--data-num', default=-1, type=int)
     parser.add_argument('--max-source-len', default=320, type=int)
-    parser.add_argument('--max-target-len', default=128, type=int)
+    #parser.add_argument('--max-target-len', default=128, type=int)
     parser.add_argument('--cache-data', default='cache_data/summarize_python', type=str)
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str)  # TODO: auch mit codet5p-770m trainieren
 
