@@ -1,10 +1,8 @@
 from datasets import load_dataset
 from transformers import (
                             AutoTokenizer,
-                            DataCollatorWithPadding,
-                            T5ForConditionalGeneration,
-                            AutoModelForSequenceClassification,
-                            AutoModelForSeq2SeqLM,
+                            DataCollatorWithPadding,                            
+                            AutoModelForSequenceClassification,                            
                             TrainingArguments,
                             Trainer
                         )
@@ -12,10 +10,8 @@ import evaluate
 import torch
 import numpy as np
 
-
-
-
 #https://huggingface.co/docs/transformers/tasks/sequence_classification
+#läuft so wie es ist durch, output gesichert in: test_outputs/sequence_classification_output.txt
 
 
 
@@ -29,26 +25,64 @@ datasets = load_dataset("json", data_files=data_files)
 #print("datasets: ", datasets)
 print("datasets test: ", datasets['test'][0], "\n" )
 
+# Find the max length of code snippet
+"""i = 0
+snippet_len_train =[] 
+for snippet in datasets['train']:
+    #print("i: ", i)
+    #print("snippet['code']: ", snippet['code'])
+    length = len(snippet['code'])
+    snippet_len_train.append(length)
+    #print("snippet_len_train: ", snippet_len_train)
+    i += 1
+print("i: ", i)
+highest = max(snippet_len_train)
+print("highest train: ", highest)  # highest train: 242
 
-checkpoint = "Salesforce/codet5p-220m"
+j = 0
+snippet_len_validation =[] 
+for snippet in datasets['validation']:
+    #print("j: ", j)
+    #print("snippet['code']: ", snippet['code'])
+    length = len(snippet['code'])
+    snippet_len_validation.append(length)
+    #print("snippet_len_validation: ", snippet_len_validation)
+    j += 1
+print("j: ", j)
+highest = max(snippet_len_validation)   
+print("highest validation: ", highest)  # highest validation: 239
+
+k = 0
+snippet_len_test =[] 
+for snippet in datasets['test']:
+    #print("k: ", k)
+    #print("snippet['code']: ", snippet['code'])
+    length = len(snippet['code'])
+    snippet_len_test.append(length)
+    #print("snippet_len_test: ", snippet_len_test)
+    k += 1
+print("k: ", k)
+highest = max(snippet_len_test)
+print("highest test: ", highest)  # highest test: 243"""  
+###################################
+
+#checkpoint = "Salesforce/codet5p-220m"
+checkpoint = "distilbert/distilbert-base-uncased"
 device = "cpu" # "cuda" for GPU usage or "cpu" for CPU usage
 tokenizer = AutoTokenizer.from_pretrained(checkpoint)
 
 id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}
 label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}
-#model = AutoModelForSequenceClassification.from_pretrained(checkpoint)
-model = T5ForConditionalGeneration.from_pretrained(checkpoint, num_labels=2, id2label=id2label, label2id=label2id).to(device)
-
-#model = AutoModelForSeq2SeqLM.from_pretrained(checkpoint,
-                                              torch_dtype=torch.float16,
-                                              low_cpu_mem_usage=True,
-                                              trust_remote_code=True).to(device)  # was T5+ sagt???
+model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=2, id2label=id2label, label2id=label2id)
 
 
 def preprocess_function(examples):
+    snippets_len = []
+    length = len(examples['code'])
+    snippets_len.append(length) 
     print("examples 0: ", examples["code"][0])
     print("examples 53: ", examples["code"][53])
-    print("examples 200: ", examples["code"][200])
+    print("examples 200: ", examples["code"][200])    
     return tokenizer(examples["code"], truncation=True)
 
 """def test_preprocess_function(datasets):
@@ -75,10 +109,7 @@ tokenized_datasets = tokenized_datasets.remove_columns(["snippet_id"])
 tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
 tokenized_datasets.set_format("torch")
 
-print("tokenizec_datasets: ", tokenized_datasets)
-
-
-
+print("tokenized_datasets: ", tokenized_datasets)
 
 def compute_metrics(eval_pred):
 
