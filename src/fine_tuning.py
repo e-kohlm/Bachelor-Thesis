@@ -1,5 +1,6 @@
 import os
 import time
+import math
 import pprint
 import argparse
 from datasets import load_dataset, load_from_disk
@@ -11,8 +12,9 @@ import torch
 import numpy as np
 
 
-def run_training(args, model, train_data):
-    print(f"Starting training")
+def run_training(args, model, train_data, tokenizer):
+    print("\nStarting training")
+    #print("train_data: ", train_data)  # hier sehe ich die je 512 token, was viel zu viel ist, 256 wäre immer noch reichlich, sogar 128
     start_time = time.time()
 
     # ValueError: expected sequence of length 62 at dim 1 (got 57)
@@ -22,21 +24,37 @@ def run_training(args, model, train_data):
     accuracy = evaluate.load("accuracy")
     f1 = evaluate.load("f1")
     precision = evaluate.load("precision")
-    recall = evaluate.load("recall")
+    recall = evaluate.load("recall")  
+    # FIXME: UndefinedMetricWarning: Recall is ill-defined and being set to 0.0 due to no true samples.
+    #  Use `zero_division` parameter to control this behavior.
 
 
     def compute_metrics(eval_pred):
-        print("eval_pred: ", eval_pred)
+        #print("eval_pred: ", eval_pred)
         predictions, labels = eval_pred
-        predictions = np.argmax(predictions, axis=1)  
+        #print("predictions: ", predictions)
+        #print("labels: ", labels)
+
+        # FIXME: predictions is a tuple with two elements.
+        # - The first element is an array of e.g. (--data-num=80)
+        # 8 tuples with two elements each => (8,2)
+        # - The second has three dimensions (8, 512, 768), what to do with that
+        
+        #print("pred type: ", type(predictions))
+        #print("lables type: ", type(labels))
+        #print("test tuple element 1: ", predictions[0][0])
+        #print("test tuple element 2: ", predictions[1][0])  # What exactly do numbers of the second tuple mean?
+
+        
+        tuple_element_1 = np.asarray(predictions[0])
+        tuple_element_2 = np.asarray(predictions[1])        
+        #print("tuple_element_1 shape: ", tuple_element_1.shape)
+        print("tuple_element_2 shape: ", tuple_element_2.shape)
+        #print("labels shape: ", labels.shape)
+
+        predictions = np.argmax(tuple_element_1, axis=1)  # FIXME only prediction with values of first tuple, what to do with the other one????
         clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])    
-        return clf_metrics.compute(predictions=predictions, references=labels)
-    # wirft: ValueError: could not broadcast input array from shape (592,2) into shape (592,)
-  
-
-
-
-
+        return clf_metrics.compute(predictions=predictions, references=labels)  # TODO Save to file
 
 
     training_args = TrainingArguments(
@@ -67,15 +85,16 @@ def run_training(args, model, train_data):
         local_rank=args.local_rank,
         deepspeed=args.deepspeed,
         fp16=args.fp16,
+        push_to_hub=False,   # really???
     )
 
     trainer = Trainer(
         model=model,
         args=training_args,
         #train_dataset=train_data,
-        train_dataset=train_data["train"],
+        train_dataset=train_data["train"],  # TODO train-validation-test? Or what turorial says train-validation? Or what codet5 says: train?
         eval_dataset=train_data["test"],
-        #tokenizer=tokenizer,
+        tokenizer=tokenizer,
         #data_collator=data_collator,
         compute_metrics=compute_metrics,
     )
@@ -90,10 +109,10 @@ def run_training(args, model, train_data):
     
     end_time = time.time()
     time_elapsed = end_time - start_time
-    print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)))
+    print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
 
 
-def load_tokenize_data(args):  # 5.   
+def load_tokenize_data(args, tokenizer):  # 5.   
 
     # Check if train_data already exists in cache_data/summarize_python
     if os.path.exists(args.cache_data):
@@ -117,12 +136,11 @@ def load_tokenize_data(args):  # 5.
 
 
         # Tokenize data
-        tokenizer_max_len = 512
+        """tokenizer_max_len = 512
         tokenizer_config = {'max_len': tokenizer_max_len}
         #tokenizer = AutoTokenizer.from_pretrained(**tokenizer_config)
         tokenizer = AutoTokenizer.from_pretrained(args.load, **tokenizer_config)
-        #print("tokenizer model_max_length: ", tokenizer.model_max_length)
-        
+        #print("tokenizer model_max_length: ", tokenizer.model_max_length)"""
 
         def preprocess_function(examples):
             with open('test_outputs/test_fine_tuning_examples.txt', 'w') as f:
@@ -138,13 +156,14 @@ def load_tokenize_data(args):  # 5.
             batched=True,
             #remove_columns=datasets.column_names,
             num_proc=64,
-            load_from_cache_file=False,
+            #load_from_cache_file=False,
         )
 
         train_data = train_data.remove_columns(["snippet_id"])
         train_data = train_data.rename_column("label", "labels")
         train_data.set_format("torch")
         print("train_data: ", train_data)    
+        #print("train_data['train'][0]: ", train_data['train'][0], "\n" )
 
 
 
@@ -165,13 +184,23 @@ def main(args):  # 2.
 
     # Load and tokenize data using the tokenizer from `args.load`. If the data is already cached, load it from there.
     # You can customize this function to load your own data for any Seq2Seq LM tasks.
-    
-    train_data = load_tokenize_data(args)  # 4. Daten werden geladen und tokenized
+    tokenizer_max_len = 512
+    tokenizer_config = {'max_len': tokenizer_max_len}
+    #tokenizer = AutoTokenizer.from_pretrained(**tokenizer_config)
+    tokenizer = AutoTokenizer.from_pretrained(args.load, **tokenizer_config)
+    #print("tokenizer model_max_length: ", tokenizer.model_max_length)
+        
+
+
+    train_data = load_tokenize_data(args, tokenizer=tokenizer)  # 4. Daten werden geladen und tokenized
     
     # Check if an argument for a smaller sample of data was given
     if args.data_num != -1:        
-        train_data = train_data.select([i for i in range(args.data_num)])
-
+        train_data['train'] = [train_data['train'][i]for i in range(args.data_num)]
+        #print("DATA: ", [train_data['train'][i]for i in range(args.data_num)])
+        train_data['validation'] = [train_data['validation'][i]for i in range(math.ceil(args.data_num * 15 / 100))]
+        train_data['test'] = [train_data['test'][i]for i in range(math.ceil(args.data_num * 15 / 100))]
+        
     
     # Load model from `args.load`
     id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}
@@ -182,26 +211,36 @@ def main(args):  # 2.
                                                             label2id=label2id)    
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
 
-    run_training(args, model, train_data)
+    run_training(args, model, train_data, tokenizer=tokenizer)
 
     # Inference
 
     #https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.TextClassificationPipeline
     #https://huggingface.co/docs/transformers/task_summary#sequence-classification
+    #TODO https://huggingface.co/docs/evaluate/a_quick_tour
 
 
-    """# TODO evenn though, load_best_model_at_end=true, ohne checkpoint wird keine config.json gefunden
-    classifier_174 = pipeline(task="text-classification", model="my_awesome_model/checkpoint-174")
-    classifier_348 = pipeline(task="text-classification", model="my_awesome_model/checkpoint-348")
+    print("\nInference")
+    # TODO load_best_model_at_end=true was macht das? ist aus tutorial_sequence_classification , den checkpoint musste ich trotzdem in Pfad packen
+    # TODO ohne checkpoint wird keine config.json gefunden
+    # TODO Dynamisch machen, nicht jeden checkpoint einzeln
+    # TODO final checkpoint hat nicht die notwendigen Daten für Inference, warum? 
+
+   
+    classifier_cp_1 = pipeline(task="text-classification", model=args.save_dir + "/checkpoint-1")
+    #classifier_f_cp = pipeline(task="text-classification", model=args.save_dir + "/final_checkpoint") # Dateien fehlen
+    
     test_text = "tokenized_datasets = tokenized_datasets.remove_columns(['snippet_id']) tokenized_datasets = tokenized_datasets.rename_column('label', 'labels') tokenized_datasets.set_format('torch')"
     vul_snippet = "SQL_RECURSIVE_QUERY_EDUCATION_GROUP='''\\ WITH RECURSIVE group_element_year_parent AS( SELECT id, child_branch_id, child_leaf_id, parent_id, 0 AS level FROM base_groupelementyear WHERE parent_id IN({list_root_ids'"
     not_vul_snippet = "' INNER JOIN group_element_year_parent AS parent on parent.child_branch_id=child.parent_id ) SELECT * FROM group_element_year_parent ; ''''''''' class GroupElementYearManager(models.Manager): def get_queryset"
     # TODO kein snippet reingeben, sondern viel Code, was passiert dann damit?
-    #print("test_text: ", test_text)
-    result_174 = classifier_174(test_text)
-    result_348 = classifier_348(test_text)
-    print("result_174: ", result_174)
-    print("result_348: ", result_348)"""
+      
+      
+    print("test_text_cp_1: ", classifier_cp_1(test_text))
+    #print("test text_f_cp: ", classifier_f_cp(test_text))
+    print("vul_cp_1: ", classifier_cp_1(vul_snippet))
+    print("not_vul_cp 1: ", classifier_cp_1(not_vul_snippet))
+    
 
 
 if __name__ == "__main__":  # Argumente 
@@ -217,6 +256,7 @@ if __name__ == "__main__":  # Argumente
     parser.add_argument('--lr', default=5e-5, type=float)
     parser.add_argument('--lr-warmup-steps', default=200, type=int)
     parser.add_argument('--batch-size-per-replica', default=8, type=int)
+    #parser.add_argument('--accuracy', default=True, type=float)# meins, wird einfach ignoriert
     parser.add_argument('--grad-acc-steps', default=4, type=int)
     parser.add_argument('--local_rank', default=-1, type=int)
     parser.add_argument('--deepspeed', default=None, type=str)

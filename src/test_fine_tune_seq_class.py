@@ -13,6 +13,12 @@ import numpy as np
 
 from contextlib import redirect_stdout # weg
 
+"""
+Just for testing it is the tutorial of sequence classification copied and finetuned with CodeT5.
+Not working, working version is fine_tuning.py
+"""
+
+
 #https://huggingface.co/docs/transformers/tasks/sequence_classification
 #Guide shows how to finetune DistilBERT and use your finetuned model for inference
 #läuft so wie es ist durch, output gesichert in: test_outputs/sequence_classification_output.txt
@@ -23,69 +29,27 @@ file_path = "../VUDENC_data/"
 training_set = "EXAMPLE_sql_dataset-TRAINING"
 validation_set = "EXAMPLE_sql_dataset-VALIDATION"
 test_set = "EXAMPLE_sql_dataset-TESTING"
-raw_datasets = "EXAMPLE_sql_dataset"
 data_files = {"train": file_path + training_set, "validation": file_path + validation_set, "test": file_path + test_set}
-datasets = load_dataset("json", data_files=data_files)
-#print("datasets: ", datasets)
-print("datasets test: ", datasets['train'][0], "\n" )
-
-# Find the max length of code snippet
-"""i = 0
-snippet_len_train =[] 
-for snippet in datasets['train']:
-    #print("i: ", i)
-    #print("snippet['code']: ", snippet['code'])
-    length = len(snippet['code'])
-    snippet_len_train.append(length)
-    #print("snippet_len_train: ", snippet_len_train)
-    i += 1
-print("i: ", i)
-highest = max(snippet_len_train)
-print("highest train: ", highest)  # highest train: 242
-
-j = 0
-snippet_len_validation =[] 
-for snippet in datasets['validation']:
-    #print("j: ", j)
-    #print("snippet['code']: ", snippet['code'])
-    length = len(snippet['code'])
-    snippet_len_validation.append(length)
-    #print("snippet_len_validation: ", snippet_len_validation)
-    j += 1
-print("j: ", j)
-highest = max(snippet_len_validation)   
-print("highest validation: ", highest)  # highest validation: 239
-
-k = 0
-snippet_len_test =[] 
-for snippet in datasets['test']:
-    #print("k: ", k)
-    #print("snippet['code']: ", snippet['code'])
-    length = len(snippet['code'])
-    snippet_len_test.append(length)
-    #print("snippet_len_test: ", snippet_len_test)
-    k += 1
-print("k: ", k)
-highest = max(snippet_len_test)
-print("highest test: ", highest)  # highest test: 243"""  
-###################################
+datasets = load_dataset("json", data_files=data_files)    
 
 
-#checkpoint = "distilbert/distilbert-base-uncased"
-#device = "cpu" # "cuda" for GPU usage or "cpu" for CPU usage
-#tokenizer = AutoTokenizer.from_pretrained(checkpoint)
 
-tokenizer = AutoTokenizer.from_pretrained("distilbert/distilbert-base-uncased")
+
+checkpoint = "Salesforce/codet5p-220m"
+device = "cpu" # "cuda" for GPU usage or "cpu" for CPU usage
+tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+
+#tokenizer = AutoTokenizer.from_pretrained("distilbert/distilbert-base-uncased")
 
 id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}
 label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}
-#model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=2, id2label=id2label, label2id=label2id)
-model = AutoModelForSequenceClassification.from_pretrained(
-                                                            "distilbert/distilbert-base-uncased",
-                                                            num_labels=2,
-                                                            id2label=id2label,
-                                                            label2id=label2id
-                                                            )
+model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=2, id2label=id2label, label2id=label2id)
+#model = AutoModelForSequenceClassification.from_pretrained(
+                                                            #"distilbert/distilbert-base-uncased",
+                                                            #num_labels=2,
+                                                            #id2label=id2label,
+                                                            #label2id=label2id
+                                                            #)
 
 print("tokenizer model_max_length: ", tokenizer.model_max_length)                                                            
 
@@ -116,11 +80,21 @@ recall = evaluate.load("recall")
 
 
 def compute_metrics(eval_pred):
+    """# ValueError: could not broadcast input array from shape (594,2) into shape (594,)
     predictions, labels = eval_pred
     predictions = np.argmax(predictions, axis=1)  
     clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])    
-    return clf_metrics.compute(predictions=predictions, references=labels)  # Saved in trainer_state.json of checkpooints
-       
+    return clf_metrics.compute(predictions=predictions, references=labels)  # Saved in trainer_state.json of checkpooints"""
+    predictions, labels = eval_pred        
+    tuple_element_1 = np.asarray(predictions[0])
+    tuple_element_2 = np.asarray(predictions[1])        
+    print("tuple_element_1 shape: ", tuple_element_1.shape)
+    print("tuple_element_2 shape: ", tuple_element_2.shape)
+    print("labels shape: ", labels.shape)
+
+    predictions = np.argmax(tuple_element_1, axis=1)  # FIXME only prediction with values of first tuple, what to do with the other one????
+    clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])    
+    return clf_metrics.compute(predictions=predictions, references=labels)  # TODO Save to file   
 
 # Define your training hyperparameters
 training_args = TrainingArguments(
@@ -156,13 +130,22 @@ trainer.train()
 
 
 # TODO evenn though, load_best_model_at_end=true, ohne checkpoint wird keine config.json gefunden
-classifier_174 = pipeline(task="text-classification", model="my_awesome_model/checkpoint-174")
-classifier_348 = pipeline(task="text-classification", model="my_awesome_model/checkpoint-348")
-test_text = "tokenized_datasets = tokenized_datasets.remove_columns(['snippet_id'])\
-            tokenized_datasets = tokenized_datasets.rename_column('label', 'labels')\
-            tokenized_datasets.set_format('torch')"
+#classifier_cp_2 = pipeline(task="text-classification", model="saved_models/summarize_python")
+classifier_f_cp = pipeline(task="text-classification", model="saved_models/summarize_python/final_checkpoint")
+test_text = "tokenized_datasets = tokenized_datasets.remove_columns(['snippet_id']) tokenized_datasets = tokenized_datasets.rename_column('label', 'labels') tokenized_datasets.set_format('torch')"
+vul_snippet = "SQL_RECURSIVE_QUERY_EDUCATION_GROUP='''\\ WITH RECURSIVE group_element_year_parent AS( SELECT id, child_branch_id, child_leaf_id, parent_id, 0 AS level FROM base_groupelementyear WHERE parent_id IN({list_root_ids'"
+not_vul_snippet = "' INNER JOIN group_element_year_parent AS parent on parent.child_branch_id=child.parent_id ) SELECT * FROM group_element_year_parent ; ''''''''' class GroupElementYearManager(models.Manager): def get_queryset"
+# TODO kein snippet reingeben, sondern viel Code, was passiert dann damit?
 #print("test_text: ", test_text)
-result_174 = classifier_174(test_text)
-result_348 = classifier_348(test_text)
-print("result_174: ", result_174)
-print("result_348: ", result_348)
+test_text_cp_2 = classifier_cp_2(test_text)
+test_text_f_cp = classifier_f_cp(test_text)
+vul_cp_2 = classifier_cp_2(vul_snippet)
+vul_f_cp = classifier_f_cp(vul_snippet)
+not_vul_snippet_cp_2 = classifier_cp_2(not_vul_snippet)
+not_vul_snippet_f_cp = classifier_f_cp(not_vul_snippet)
+print("test text cp 2: ", test_text_cp_2)
+print("test texst f cp: ", test_text_f_cp)
+print("vul cp 2: ", vul_cp_2)
+print("vul f cp: ", vul_f_cp)
+print("not vul cp 2: ", not_vul_snippet_f_cp)
+print("not vul f cp: ", not_vul_snippet_f_cp)
