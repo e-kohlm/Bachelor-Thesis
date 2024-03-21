@@ -127,7 +127,7 @@ def load_tokenize_data(args, tokenizer):  # 5.
         test_set = "EXAMPLE_sql_dataset-TESTING"
         data_files = {"train": file_path + training_set, "validation": file_path + validation_set, "test": file_path + test_set}
         datasets = load_dataset("json", data_files=data_files)        
-        with open('test_outputs/test_load_fine_tuning.txt', 'w') as f:
+        with open('../test_outputs/test_load_fine_tuning.txt', 'w') as f:
                 with redirect_stdout(f):
                     print("datasets test: ", datasets['train'][0], "\n" )
         #print("datasets: ", datasets)   
@@ -143,7 +143,7 @@ def load_tokenize_data(args, tokenizer):  # 5.
         #print("tokenizer model_max_length: ", tokenizer.model_max_length)"""
 
         def preprocess_function(examples):
-            with open('test_outputs/test_fine_tuning_examples.txt', 'w') as f:
+            with open('../test_outputs/test_fine_tuning_examples.txt', 'w') as f:
                 with redirect_stdout(f):
                     print("examples 0: ", examples["code"][0])
                     #print("examples 3: ", examples["code"][3])
