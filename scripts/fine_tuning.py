@@ -200,47 +200,25 @@ def main(args):  # 2.
         #print("DATA: ", [train_data['train'][i]for i in range(args.data_num)])
         train_data['validation'] = [train_data['validation'][i]for i in range(math.ceil(args.data_num * 15 / 100))]
         train_data['test'] = [train_data['test'][i]for i in range(math.ceil(args.data_num * 15 / 100))]
-        
+
+
     
     # Load model from `args.load`
+    
+    # einfach so auf 4 label setzen geht nicht: ValueError: Target is multiclass but average='binary'. Please choose another average setting, one of [None, 'micro', 'macro', 'weighted'].
     id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}
+    #id2label ={0: "NOT VULNERABLE", 1: "SQL_VULNERABLE", 2: "XSRF_VULNERABLE", 3: "OPEN_REDIRECT_VULNERABLE"}
     label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}
+    #label2id = {"NOT VULNERABLE": 0, "SQL_VULNERABLE": 1, "XSRF_VULNERABLE": 2, "OPEN_REDIRECT_VULNERABLE": 3}
     model = AutoModelForSequenceClassification.from_pretrained(args.load, 
+                                                            #num_labels=2,
                                                             num_labels=2,
                                                             id2label=id2label,
                                                             label2id=label2id)    
+                                                            
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
 
-    run_training(args, model, train_data, tokenizer=tokenizer)
-
-    # Inference
-
-    #https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.TextClassificationPipeline
-    #https://huggingface.co/docs/transformers/task_summary#sequence-classification
-    #TODO https://huggingface.co/docs/evaluate/a_quick_tour
-
-
-    print("\nInference")
-    # TODO load_best_model_at_end=true was macht das? ist aus tutorial_sequence_classification , den checkpoint musste ich trotzdem in Pfad packen
-    # TODO ohne checkpoint wird keine config.json gefunden
-    # TODO Dynamisch machen, nicht jeden checkpoint einzeln
-    # TODO final checkpoint hat nicht die notwendigen Daten für Inference, warum? 
-
-   
-    classifier_cp_1 = pipeline(task="text-classification", model=args.save_dir + "/checkpoint-1")
-    #classifier_f_cp = pipeline(task="text-classification", model=args.save_dir + "/final_checkpoint") # Dateien fehlen
-    
-    test_text = "tokenized_datasets = tokenized_datasets.remove_columns(['snippet_id']) tokenized_datasets = tokenized_datasets.rename_column('label', 'labels') tokenized_datasets.set_format('torch')"
-    vul_snippet = "SQL_RECURSIVE_QUERY_EDUCATION_GROUP='''\\ WITH RECURSIVE group_element_year_parent AS( SELECT id, child_branch_id, child_leaf_id, parent_id, 0 AS level FROM base_groupelementyear WHERE parent_id IN({list_root_ids'"
-    not_vul_snippet = "' INNER JOIN group_element_year_parent AS parent on parent.child_branch_id=child.parent_id ) SELECT * FROM group_element_year_parent ; ''''''''' class GroupElementYearManager(models.Manager): def get_queryset"
-    # TODO kein snippet reingeben, sondern viel Code, was passiert dann damit?
-      
-      
-    print("test_text_cp_1: ", classifier_cp_1(test_text))
-    #print("test text_f_cp: ", classifier_f_cp(test_text))
-    print("vul_cp_1: ", classifier_cp_1(vul_snippet))
-    print("not_vul_cp 1: ", classifier_cp_1(not_vul_snippet))
-    
+    run_training(args, model, train_data, tokenizer=tokenizer)   
 
 
 if __name__ == "__main__":  # Argumente 

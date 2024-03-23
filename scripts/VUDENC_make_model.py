@@ -97,14 +97,14 @@ for repository in data:
                             positions = VUDENC_utils.findpositions(allbadparts, sourcecode)
 
                             # get the file split up in samples
-                            blocks = VUDENC_utils.getblocks(sourcecode, positions, step, fulllength)
-
+                            blocks = VUDENC_utils.getblocks(sourcecode, positions, step, fulllength)  # TODO: das muss ich auch mit Code machen, den ich testen will
+                            #print("blocks: ", blocks)
                             for b in blocks:  # each block is a tuple of code and label
                                 """
                                 In VUDENC a block was stored in a list, now it is stored in a dictionary 
                                 """
                                 block_dict = {}
-                                """with open('test_one_block.json', 'w') as f:
+                                """with open('../test_outputs/test_one_block.json', 'w') as f:
                                     with redirect_stdout(f):
                                         print("b: ", b)"""
                                 # Save each code snippet with its label (vulnerable = 1, not vulnerable = 0) in a dict

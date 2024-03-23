@@ -22,6 +22,10 @@ import keyword
 import pickle
 import numpy
 import os
+import os.path
+import sys
+import json
+from contextlib import redirect_stdout
 from gensim.models import Word2Vec, KeyedVectors
 import tensorflow as tf
 from PIL import Image
@@ -157,14 +161,14 @@ def findposition(badpart,sourcecode):
 
     position.append(startfound)
     position.append(endfound)
-
+    print("position: ", position)
     if endfound < 0:
         startfound = -1
 
     if endfound < 0 and startfound < 0: #and not "#" in badpart and not '"""' in badpart and not "'''" in badpart:
         #    print(sourcecode)
         #    print(":::::::::::")
-        #    print(badpart)
+        print("badpart: ", badpart)
         #    print("-----------------")
         return[-1, -1]
     return position
@@ -281,6 +285,7 @@ def getcontext(sourcecode,focus,fulllength):
 def getblocks(sourcecode, badpositions, step, fulllength):
     # TODO: confirmed it is used
     #print("Elke: getblocks is used.")
+    singelblock_length =[]  # Meins 
     blocks = []
     focus = 0
     lastfocus = 0
@@ -312,12 +317,11 @@ def getblocks(sourcecode, badpositions, step, fulllength):
                 else:
                     label = 0  # Changed from 1 to 0 by Elke Kohlmann (in VUDENC it was mislabeled originally and in make_model.py corrected)
 
-
+                
                 singleblock = []
-                singleblock.append(sourcecode[context[0]:context[1]])
-                #print("singleblock: ", singleblock)
-                singleblock.append(label)                
-                #print("singleblock: ", singleblock)
+                singleblock.append(sourcecode[context[0]:context[1]])                
+                singelblock_length.append(len(sourcecode[context[0]:context[1]])) # meins
+                singleblock.append(label)                                
 
                 already = False
                 for b in blocks:
@@ -342,7 +346,10 @@ def getblocks(sourcecode, badpositions, step, fulllength):
                     focus = len(sourcecode)
                 else:
                     break
-
+    with open('../test_outputs/singleblock_length.txt', 'w') as f:  # meins
+        with redirect_stdout(f):
+            print("singleblock_len: ", singelblock_length)
+            print("min:", min(singelblock_length), "max:",  max(singelblock_length))
     return blocks
 
 
