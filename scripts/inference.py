@@ -17,13 +17,12 @@ print("\nInference")
 # TODO final checkpoint hat nicht die notwendigen Daten für Inference, warum? 
 
 
-classifier_cp_1 = pipeline(task="text-classification", model="saved_models/summarize_python" + "/checkpoint-280")
+classifier_cp_1 = pipeline(task="text-classification", model="saved_models/summarize_python" + "/checkpoint-280") #FIXME checkpoint hardgecoded und final_checkpoint
 #classifier_f_cp = pipeline(task="text-classification", model=args.save_dir + "/final_checkpoint") # Dateien fehlen
 
 test_text = "tokenized_datasets = tokenized_datasets.remove_columns(['snippet_id']) tokenized_datasets = tokenized_datasets.rename_column('label', 'labels') tokenized_datasets.set_format('torch')"
 vul_snippet = "SQL_RECURSIVE_QUERY_EDUCATION_GROUP='''\\ WITH RECURSIVE group_element_year_parent AS( SELECT id, child_branch_id, child_leaf_id, parent_id, 0 AS level FROM base_groupelementyear WHERE parent_id IN({list_root_ids'"
 not_vul_snippet = "' INNER JOIN group_element_year_parent AS parent on parent.child_branch_id=child.parent_id ) SELECT * FROM group_element_year_parent ; ''''''''' class GroupElementYearManager(models.Manager): def get_queryset"
-# TODO kein snippet reingeben, sondern viel Code, was passiert dann damit?
 
 
 print("test_text_cp_1: ", classifier_cp_1(test_text))
@@ -32,7 +31,7 @@ print("vul_cp_1: ", classifier_cp_1(vul_snippet))
 print("not_vul_cp 1: ", classifier_cp_1(not_vul_snippet))
 
 
-print(" Github code reingeben ##############")
+print("########### Github code reingeben ##############")
 
 # TODO: Verstehen: der Text wird hier nicht tokenized, bzw. verstehen was da genau im Hintergrund passiert, auch wenn ich hier keinen tokenizer calle
 
