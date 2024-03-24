@@ -753,8 +753,8 @@ def getblocksVisual(mode,sourcecode, badpositions,commentareas, fulllength,step,
     return blocks
 
 def getIdentifiers(mode,nr):
-    print("Elke: getIdentifiers is used.")
-    #print("getting " + mode + " " + nr)
+    #print("Elke: getIdentifiers is used.")
+    print("getting " + mode + " " + nr)
     if mode == "sql":
         if nr == "1":
             rep = "instacart/lore"
