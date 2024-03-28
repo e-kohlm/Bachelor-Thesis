@@ -1,22 +1,19 @@
-from keras.datasets import imdb
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import Dropout
-from keras.layers import Flatten
-from keras.layers import LSTM
-#from keras.layers.convolutional import Conv1D
-#from keras.layers.convolutional import MaxPooling1D
-#from keras.models import load_model
-#from keras.layers.embeddings import Embedding
-from keras.layers import Bidirectional
-from keras.preprocessing import sequence
-from keras import backend as K
+#from keras.datasets import imdb
+#from keras.models import Sequential
+#from keras.layers import Dense
+#from keras.layers import Dropout
+#from keras.layers import Flatten
+#from keras.layers import LSTM
+
+#from keras.layers import Bidirectional
+#from keras.preprocessing import sequence
+#from keras import backend as K
 #from sklearn.metrics import accuracy_score
 #from sklearn.metrics import precision_score
 #from sklearn.metrics import recall_score
 #from sklearn.metrics import f1_score
 #from sklearn.utils import class_weight
-import tensorflow as tf
+#import tensorflow as tf
 import builtins
 import keyword
 import pickle
@@ -33,14 +30,11 @@ from PIL import ImageDraw
 from PIL import ImageFont
 from termcolor import colored
 
-# TODO: von VUDENC geklaut, insofern sollt ich das villeicht auch in eine extra dir: VUDENC_src packen
-# TODO: Comment, dass ich das zwar geklaut habe, aber Lesbarkeit verbessert
-# TODO: remove unused code
-# TODO: Comment changes
+
 """
-This code was first implemented in VUDENC, only minor changes are made:
+This code was first implemented in VUDENC, myutils.py,  only minor changes are made:
 - the variable 'q' was renamed to 'label' and the values of label were exchanged (0 to 1 and vice versa),
-  instead of exchanging the values later on in VUDENC_make_model.py    
+  instead of exchanging the values later on in labeling_splitting.py    
 - unused code was removed
 - some comments were added
 """
@@ -92,27 +86,21 @@ def findposition(badpart,sourcecode):
 
     b = badpart.lstrip()
     if len(b) < 1:
-        print(b)
-        #  print("nope.\n\n")
+        print(b)      
         return[-1, -1]
 
-    while not end:
-        #print("position : " + str(pos))
+    while not end:        
         if not inacomment:
             last = pos-1
         if pos >= len(sourcecode):
             end = True
             break
-        if sourcecode[pos] == "\n":
-            #     print("end of comment")
-            #     print("[" + sourcecode[last]+ "]")
+        if sourcecode[pos] == "\n":   
             inacomment = False
-        if sourcecode[pos] == "\n" and (sourcecode[pos-1] == "\n" or sourcecode[last] == " "):
-            #print("one further")
+        if sourcecode[pos] == "\n" and (sourcecode[pos-1] == "\n" or sourcecode[last] == " "):            
             pos = pos + 1
             continue
-        if sourcecode[pos] == " " and (sourcecode[pos-1] == " " or sourcecode[last] == "\n"):
-            # print("one further")
+        if sourcecode[pos] == " " and (sourcecode[pos-1] == " " or sourcecode[last] == "\n"):            
             pos = pos +1
             continue
         if sourcecode[pos] == "#":
@@ -132,26 +120,21 @@ def findposition(badpart,sourcecode):
             if (a != b) and (a == " " or a == "\n") and ((b in splitchars) or (c in splitchars)):
                 pos = pos+1
                 continue
-            if (a != b) and (b == " " or b == "\n"):
-                #print("here")
-                if (c in splitchars or d in splitchars):
-                    #print("here2")
+            if (a != b) and (b == " " or b == "\n"):               
+                if (c in splitchars or d in splitchars):                   
                     if (matchindex < len(badpart)-1):
                         matchindex = matchindex + 1
                         continue
             if a == b:
                 if matchindex == 0:
-                    startfound = pos
-                    # print("\n>>match: " + badpart[matchindex] + "(" + str(matchindex) + "/" + str(len(badpart)) + ")\n\n")
+                    startfound = pos                   
                 matchindex = matchindex + 1
-            else:
-                #print("\n>>no match" )
+            else:               
                 matchindex = 0
                 startfound = -1
 
             if matchindex == len(badpart):
-                endfound = pos
-                #print("FOUND at pos " + str(startfound) + ":" + str(endfound))
+                endfound = pos                
                 break
 
         if pos == len(sourcecode):
@@ -160,20 +143,14 @@ def findposition(badpart,sourcecode):
         pos = pos + 1
 
     position.append(startfound)
-    position.append(endfound)
-    print("position: ", position)
+    position.append(endfound) 
     if endfound < 0:
         startfound = -1
 
-    if endfound < 0 and startfound < 0: #and not "#" in badpart and not '"""' in badpart and not "'''" in badpart:
-        #    print(sourcecode)
-        #    print(":::::::::::")
-        print("badpart: ", badpart)
-        #    print("-----------------")
+    if endfound < 0 and startfound < 0: #and not "#" in badpart and not '"""' in badpart and not "'''" in badpart:      
+        print("badpart: ", badpart)       
         return[-1, -1]
     return position
-
-
 
 
 def findpositions(badparts,sourcecode):
@@ -223,29 +200,20 @@ def getcontextPos(sourcecode,focus,fulllength):
     start = True
   
       
-    while not len(sourcecode[startcontext:endcontext]) > fulllength:
-        #print(str(startcontext) + ":" + str(endcontext))
-        #print(len(sourcecode[startcontext:endcontext]))
+    while not len(sourcecode[startcontext:endcontext]) > fulllength:        
     
-        if previoussplit(sourcecode,startcontext) == -1 and nextsplit(sourcecode,endcontext) == -1:
-            #print("NONE!")
+        if previoussplit(sourcecode,startcontext) == -1 and nextsplit(sourcecode,endcontext) == -1:           
             return None
     
         if start:
             if previoussplit(sourcecode,startcontext) > -1:
-                startcontext = previoussplit(sourcecode,startcontext)
-                #print("new start: " + str(startcontext))
+                startcontext = previoussplit(sourcecode,startcontext)                
             start = False
         else:
             if nextsplit(sourcecode,endcontext) > -1:
-                endcontext = nextsplit(sourcecode,endcontext)
-                #print("new end: " + str(endcontext))
-            start = True
-
-        
-    #  print("focus: " + str(focus))
-    #  print("start: " + str(startcontext))
-    #  print("end: " + str(endcontext))
+                endcontext = nextsplit(sourcecode,endcontext)               
+            start = True        
+  
     return [startcontext,endcontext]
 
 def getcontext(sourcecode,focus,fulllength):
@@ -256,29 +224,20 @@ def getcontext(sourcecode,focus,fulllength):
     start = True
   
       
-    while not len(sourcecode[startcontext:endcontext]) > fulllength:
-        # print(str(startcontext) + ":" + str(endcontext))
-        # print(len(sourcecode[startcontext:endcontext]))
+    while not len(sourcecode[startcontext:endcontext]) > fulllength:   
 
-        if previoussplit(sourcecode,startcontext) == -1 and nextsplit(sourcecode,endcontext) == -1:
-            #   print("NONE!")
+        if previoussplit(sourcecode,startcontext) == -1 and nextsplit(sourcecode,endcontext) == -1:           
             return None
 
         if start:
             if previoussplit(sourcecode,startcontext) > -1:
-                startcontext = previoussplit(sourcecode,startcontext)
-                #print("new start: " + str(startcontext))
+                startcontext = previoussplit(sourcecode,startcontext)               
             start = False
         else:
             if nextsplit(sourcecode,endcontext) > -1:
-                endcontext = nextsplit(sourcecode,endcontext)
-                #print("new end: " + str(endcontext))
+                endcontext = nextsplit(sourcecode,endcontext)               
             start = True
-
-
-    #  print("focus: " + str(focus))
-    #  print("start: " + str(startcontext))
-    #  print("end: " + str(endcontext))
+ 
     return sourcecode[startcontext:endcontext]
 
 
@@ -299,15 +258,14 @@ def getblocks(sourcecode, badpositions, step, fulllength):
         if not (focusarea == "\n"):
 
             middle = lastfocus+round(0.5*(focus-lastfocus))
-            context = getcontextPos(sourcecode,middle,fulllength)
-            #print([lastfocus,focus,len(sourcecode)])
-
+            context = getcontextPos(sourcecode,middle,fulllength)           
             if context is not None:
 
                 vulnerablePos = False
                 for bad in badpositions:
 
                     if (context[0] > bad[0] and context[0] <= bad[1]) or (context[1] > bad[0] and context[1] <= bad[1]) or (context[0] <= bad[0] and context[1] >= bad[1]):
+                        
                         vulnerablePos = True
 
 
@@ -325,8 +283,7 @@ def getblocks(sourcecode, badpositions, step, fulllength):
 
                 already = False
                 for b in blocks:
-                    if b[0] == singleblock[0]:
-                        #  print("already.")
+                    if b[0] == singleblock[0]:                        
                         already = True
 
                 if not already:
@@ -345,11 +302,7 @@ def getblocks(sourcecode, badpositions, step, fulllength):
                     lastfocus = focus
                     focus = len(sourcecode)
                 else:
-                    break
-    with open('../test_outputs/singleblock_length.txt', 'w') as f:  # meins
-        with redirect_stdout(f):
-            print("singleblock_len: ", singelblock_length)
-            print("min:", min(singelblock_length), "max:",  max(singelblock_length))
+                    break   
     return blocks
 
 
@@ -357,22 +310,19 @@ def getblocks(sourcecode, badpositions, step, fulllength):
 
 def getBadpart(change):
     print("Elke: getBadpart is used.")
-    #print("\n")
+    
     removal = False
     lines = change.split("\n")
     for l in lines:
         if len(l) > 0:
-            if l[0] == "-":
-                #print("a line is removed")
+            if l[0] == "-":                
                 removal = True
 
 
-    if not removal:
-        #print("There is no removal.")
+    if not removal:        
         return None
 
     pairs = []
-
     badexamples = []
     goodexamples = []
 
@@ -387,8 +337,7 @@ def getBadpart(change):
                 if not "#" in line[1:].lstrip()[:3] and not "import os" in line:
                     goodexamples.append(line[1:])
 
-    if len(badexamples) == 0:
-        #    print("removed lines were empty or comments")
+    if len(badexamples) == 0:        
         return None
 
     return [badexamples,goodexamples]
@@ -444,8 +393,7 @@ def removeDoubleSeperators(tokenlist):
             token = " "
         if len(token) > 0:
             if ((last == " ") and (token == " ")):
-                o = 1 #noop
-                #print("too many \\n.")
+                o = 1 #noop                
             else:
                 newtokens.append(token)
 
@@ -478,12 +426,10 @@ def removeTripleN(tokenlist):
     newtokens = []
     for token in tokenlist:
         if len(token) > 0:
-            if ((secondlast == "\n") and (last == "\n") and (token == "\n")):
-                #print("too many \\n.")
+            if ((secondlast == "\n") and (last == "\n") and (token == "\n")):                
                 o = 1 #noop
             else:
-                newtokens.append(token)
-        
+                newtokens.append(token)        
             thirdlast = secondlast
             secondlast = last
             last = token
@@ -494,16 +440,12 @@ def getgoodblocks(sourcecode,goodpositions,fulllength):
     print("Elke: getgoodblocks is used.")
     blocks = []
     if (len(goodpositions) > 0):
-        for g in goodpositions:
-            # print("g " + str(g))
+        for g in goodpositions:           
             if g != []:
                 focus = g[0]
                 while (True):
-                    if focus >= g[1]:
-                        # print("  too far.")
-                        break
-
-                # print("Focus is on " + str(focus) + " " + sourcecode[focus])
+                    if focus >= g[1]:                       
+                        break             
           
             context = getcontext(sourcecode,focus,fulllength)
           
@@ -514,8 +456,7 @@ def getgoodblocks(sourcecode,goodpositions,fulllength):
               
                 already = False
                 for b in blocks:
-                    if b[0] == singleblock[0]:
-                        #  print("already.")
+                    if b[0] == singleblock[0]:                       
                         already = True
                   
                 if not already:
@@ -547,7 +488,7 @@ def stripComments(code):
 
 #Define F1 loss and measurement
 
-def f1_loss(y_true, y_pred):
+"""def f1_loss(y_true, y_pred):
     print("Elke: fi_loss is used.")
 
     tp = K.sum(K.cast(y_true*y_pred, 'float'), axis=0)
@@ -578,10 +519,10 @@ def f1(y_true, y_pred):
     precision = precision(y_true, y_pred)
     recall = recall(y_true, y_pred)
     return 2*((precision*recall)/(precision+recall+K.epsilon()))
+"""
 
 
-
-def predict(vectorlist,model):
+"""def predict(vectorlist,model):
     print("Elke: predict is used.")
     if (len(vectorlist) > 0):
         one = []
@@ -594,7 +535,7 @@ def predict(vectorlist,model):
         prediction = 0.00001 * prediction
         return prediction
     else:
-        return -1
+        return -1"""
 
 
 def getblocksVisual(mode,sourcecode, badpositions,commentareas, fulllength,step, nr,w2v_model,model,threshold,name):
@@ -742,8 +683,7 @@ def getblocksVisual(mode,sourcecode, badpositions,commentareas, fulllength,step,
                     lastfocus = focus
                     focus = len(sourcecode)
                 else:
-                    break
-    #print(string)
+                    break  
 
     for i in range(1,100):
         if not os.path.isfile('demo_' + mode + "_" + str(i) +"_"+ name + '.png'):
