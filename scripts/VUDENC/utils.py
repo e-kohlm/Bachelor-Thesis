@@ -1,19 +1,3 @@
-#from keras.datasets import imdb
-#from keras.models import Sequential
-#from keras.layers import Dense
-#from keras.layers import Dropout
-#from keras.layers import Flatten
-#from keras.layers import LSTM
-
-#from keras.layers import Bidirectional
-#from keras.preprocessing import sequence
-#from keras import backend as K
-#from sklearn.metrics import accuracy_score
-#from sklearn.metrics import precision_score
-#from sklearn.metrics import recall_score
-#from sklearn.metrics import f1_score
-#from sklearn.utils import class_weight
-#import tensorflow as tf
 import builtins
 import keyword
 import pickle

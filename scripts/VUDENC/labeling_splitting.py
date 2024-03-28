@@ -46,6 +46,7 @@ print("finished loading. ", nowformat)
 
 
 allblocks = []
+snippet_id = 0
 i = 0               
 for repository in data:
     i += 1          # TODO: Just for the example code, the feasibility test, remove later
@@ -82,11 +83,12 @@ for repository in data:
                             blocks = utils.getblocks(sourcecode, positions, step, fulllength)
                             #print("blocks: ", blocks)
                             for b in blocks:                         
-                                block_dict = {}                                                              
+                                block_dict = {}   
+                                block_dict['snippet_id'] = snippet_id                                                           
                                 block_dict['code'] = b[0]
-                                block_dict['labels'] = b[1]
-                                allblocks.append(block_dict)                              
-
+                                block_dict['label'] = b[1]
+                                allblocks.append(block_dict)   
+                                snippet_id += 1                           
 
 keys = []
 
