@@ -93,7 +93,7 @@ for repository in data:
 keys = []
 
 # randomize the sample and split into train, validate and final test set
-print("len allblocks: ", len(allblocks))
+print("number of code snippets: ", len(allblocks))
 for i in range(len(allblocks)):
     keys.append(i)
 
@@ -104,10 +104,10 @@ cutoff2 = round(0.85 * len(keys))  # 15% for the validation set and 15% for the 
 
 keystrain = keys[:cutoff]              
 keysvalidation = keys[cutoff:cutoff2]  
-keysfinaltest = keys[cutoff2:]         
+keystest = keys[cutoff2:]         
 
-print("cutoff " + str(cutoff))
-print("cutoff2 " + str(cutoff2))
+#print("cutoff " + str(cutoff))
+#print("cutoff2 " + str(cutoff2))
 
 
 # Save keys of three datasets to file
@@ -115,8 +115,8 @@ print("cutoff2 " + str(cutoff2))
     fp.write(str(keystrain))
 with open('../../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset_keysvalidation', 'w') as fp:
     fp.write(str(keysvalidation))
-with open('../../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset_keysfinaltest', 'w') as fp:
-    fp.write(str(keysfinaltest))"""
+with open('../../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset_keystest', 'w') as fp:
+    fp.write(str(keystest))"""
 
 training_set = []  
 validation_set = []
@@ -132,8 +132,8 @@ for k in keysvalidation:
     block = allblocks[k]
     validation_set.append(block)
 
-print("Creating finaltest dataset...")
-for k in keysfinaltest:
+print("Creating test dataset...")
+for k in keystest:
     block = allblocks[k]
     test_set.append(block)
 

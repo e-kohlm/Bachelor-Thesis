@@ -15,6 +15,7 @@ import numpy as np
 def run_training(args, model, train_data, tokenizer):
     print("\nStarting training")
     #print("train_data: ", train_data)  # hier sehe ich die je 512 token, was viel zu viel ist, 256 wäre immer noch reichlich, sogar 128
+    # Wenn es das ist, nämlich vector dimensionality, dann hier lesen: Wartschinski-Noller et al S. 11!!!
     start_time = time.time()
 
     # ValueError: expected sequence of length 62 at dim 1 (got 57)
