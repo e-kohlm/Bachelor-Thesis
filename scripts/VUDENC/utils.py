@@ -16,15 +16,14 @@ from termcolor import colored
 
 
 """
-This code was first implemented in VUDENC, myutils.py,  only minor changes are made:
+This code was first implemented in VUDENC, myutils.py,  only minor changes have been made:
 - the variable 'q' was renamed to 'label' and the values of label were exchanged (0 to 1 and vice versa),
   instead of exchanging the values later on in labeling_splitting.py    
 - unused code was removed
 - some comments were added
 """
 
-def findComments(sourcecode):
-    print("Elke: findComments is used.")
+def findComments(sourcecode):    
     commentareas = []
     inacomment = False
     commentstart = -1
@@ -49,9 +48,7 @@ def findComments(sourcecode):
 
     return commentareas
 
-def findposition(badpart,sourcecode):
-    # TODO: Confirmed: this function is used
-    # print("Elke: findPosition is used.")
+def findposition(badpart,sourcecode):    
     splitchars = ["\t", "\n", " ", ".", ":", "(", ")", "[", "]", "<", ">", "+", "-", "=","\"", "\'","*", "/","\\","~","{","}","!","?","*",";",",","%","&"]
     pos = 0
     matchindex = 0
@@ -137,9 +134,7 @@ def findposition(badpart,sourcecode):
     return position
 
 
-def findpositions(badparts,sourcecode):
-    # TODO: confirmed it is used
-    #print("Elke: findpositions is used.")
+def findpositions(badparts,sourcecode):   
     positions = []
   
     for bad in badparts:
@@ -153,18 +148,14 @@ def findpositions(badparts,sourcecode):
 
     return positions
 
-def nextsplit(sourcecode,focus):
-    # TODO: confirmed it is used
-    #print("Elke: nextsplit is used.")
+def nextsplit(sourcecode,focus):    
     splitchars = [" ","\t","\n", ".", ":", "(", ")", "[", "]", "<", ">", "+", "-", "=","\"", "\'","*", "/","\\","~","{","}","!","?","*",";",",","%","&"]
     for pos in range(focus+1, len(sourcecode)):
         if sourcecode[pos] in splitchars:
             return pos
     return -1
 
-def previoussplit(sourcecode,focus):
-    # TODO: confirmed it is used
-    #print("Elke: previoussplit is used.")
+def previoussplit(sourcecode,focus):   
     splitchars = [" ","\t","\n", ".", ":", "(", ")", "[", "]", "<", ">", "+", "-", "=","\"", "\'","*", "/","\\","~","{","}","!","?","*",";",",","%","&"]
     pos = focus-1
     while(pos >= 0):
@@ -173,19 +164,15 @@ def previoussplit(sourcecode,focus):
         pos = pos-1
     return -1
 
-def getcontextPos(sourcecode,focus,fulllength):
-    # TODO: confirmed it is used
-    #print("Elke: getContextPos is used.")
+def getcontextPos(sourcecode,focus,fulllength):    
     startcontext = focus
     endcontext = focus
     if focus > len(sourcecode)-1:
         return None
 
-    start = True
-  
+    start = True  
       
-    while not len(sourcecode[startcontext:endcontext]) > fulllength:        
-    
+    while not len(sourcecode[startcontext:endcontext]) > fulllength:     
         if previoussplit(sourcecode,startcontext) == -1 and nextsplit(sourcecode,endcontext) == -1:           
             return None
     
@@ -225,10 +212,8 @@ def getcontext(sourcecode,focus,fulllength):
     return sourcecode[startcontext:endcontext]
 
 
-def getblocks(sourcecode, badpositions, step, fulllength):
-    # TODO: confirmed it is used
-    #print("Elke: getblocks is used.")
-    singelblock_length =[]  # Meins 
+def getblocks(sourcecode, badpositions, step, fulllength):    
+    singelblock_length =[] 
     blocks = []
     focus = 0
     lastfocus = 0
@@ -292,9 +277,7 @@ def getblocks(sourcecode, badpositions, step, fulllength):
 
 
 
-def getBadpart(change):
-    print("Elke: getBadpart is used.")
-    
+def getBadpart(change):    
     removal = False
     lines = change.split("\n")
     for l in lines:
@@ -326,9 +309,7 @@ def getBadpart(change):
 
     return [badexamples,goodexamples]
 
-def getTokens(change):
-    # TODO: confirmed it is used
-    #print("Elke: getTokens is used.")
+def getTokens(change):  
     tokens = []
 
     change = change.replace(" .",".")
@@ -364,12 +345,11 @@ def getTokens(change):
                 start = i
     return(tokens)
 
-def removeDoubleSeperatorsString(string):
-    print("Elke: removeDoubleSeperatorsString is used.")
+def removeDoubleSeperatorsString(string):    
+
     return ("".join(removeDoubleSeperators(getTokens(string))))
 
-def removeDoubleSeperators(tokenlist):
-    print("Elke: removeDoubleSeparators is used.")
+def removeDoubleSeperators(tokenlist):  
     last = ""
     newtokens = []
     for token in tokenlist:
@@ -386,8 +366,7 @@ def removeDoubleSeperators(tokenlist):
     return(newtokens)
   
   
-def isEmpty(code):
-    print("Elke: isEmpty is used.")
+def isEmpty(code):   
     token = getTokens(stripComments(code))
     for t in token:
         if (t != "\n" and t != " "):
@@ -395,16 +374,15 @@ def isEmpty(code):
     return True
 
 def is_builtin(name):
-    print("Elke: is_builtin is used.")
+    
     return name in builtins.__dict__
 
 def is_keyword(name):
-    print("Elke: is_keyword is used.")
+    
     return name in keyword.kwlist
 
 
-def removeTripleN(tokenlist):
-    print("Elke: removeTripleN is used.")
+def removeTripleN(tokenlist):    
     secondlast = ""
     last = ""
     newtokens = []
@@ -420,8 +398,7 @@ def removeTripleN(tokenlist):
         
     return(newtokens)
 
-def getgoodblocks(sourcecode,goodpositions,fulllength):
-    print("Elke: getgoodblocks is used.")
+def getgoodblocks(sourcecode,goodpositions,fulllength):   
     blocks = []
     if (len(goodpositions) > 0):
         for g in goodpositions:           
@@ -452,8 +429,7 @@ def getgoodblocks(sourcecode,goodpositions,fulllength):
                     break
     return blocks
 
-def stripComments(code):
-    print("Elke: stripComments is used.")
+def stripComments(code):    
     lines = code.split("\n")
     withoutComments = ""
     therewasacomment = False
@@ -470,67 +446,13 @@ def stripComments(code):
     return withoutComments
 
 
-#Define F1 loss and measurement
-
-"""def f1_loss(y_true, y_pred):
-    print("Elke: fi_loss is used.")
-
-    tp = K.sum(K.cast(y_true*y_pred, 'float'), axis=0)
-    tn = K.sum(K.cast((1-y_true)*(1-y_pred), 'float'), axis=0)
-    fp = K.sum(K.cast((1-y_true)*y_pred, 'float'), axis=0)
-    fn = K.sum(K.cast(y_true*(1-y_pred), 'float'), axis=0)
-
-    p = tp / (tp + fp + K.epsilon())
-    r = tp / (tp + fn + K.epsilon())
-
-    f1 = 2*p*r / (p+r+K.epsilon())
-    f1 = tf.where(tf.is_nan(f1), tf.zeros_like(f1), f1)
-    return 1 - K.mean(f1)
-  
-  
-def f1(y_true, y_pred):
-    print("Elke: f1 is used.")
-    def recall(y_true, y_pred):
-        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-        possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
-        recall = true_positives / (possible_positives + K.epsilon())
-        return recall
-    def precision(y_true, y_pred):
-        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-        predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
-        precision = true_positives / (predicted_positives + K.epsilon())
-        return precision
-    precision = precision(y_true, y_pred)
-    recall = recall(y_true, y_pred)
-    return 2*((precision*recall)/(precision+recall+K.epsilon()))
-"""
-
-
-"""def predict(vectorlist,model):
-    print("Elke: predict is used.")
-    if (len(vectorlist) > 0):
-        one = []
-        one.append(vectorlist)
-        one = numpy.array(one)
-        max_length = 200
-        one = sequence.pad_sequences(one, maxlen=max_length)
-        yhat_probs = model.predict(one, verbose=0)
-        prediction = int(yhat_probs[0][0] * 100000)
-        prediction = 0.00001 * prediction
-        return prediction
-    else:
-        return -1"""
-
-
-def getblocksVisual(mode,sourcecode, badpositions,commentareas, fulllength,step, nr,w2v_model,model,threshold,name):
-    print("Elke: getblocksVisual is used.")
+def getblocksVisual(mode,sourcecode, badpositions,commentareas, fulllength,step, nr,w2v_model,model,threshold,name):   
     word_vectors = w2v_model.wv
 
     ypos = 0
     xpos = 0
 
-    lines = (sourcecode.count("\n"))
-    #print("lines: " + str(lines))
+    lines = (sourcecode.count("\n"))   
     img = Image.new('RGBA', (2000, 11*(lines+1)))
     color = "white"
 
@@ -551,19 +473,15 @@ def getblocksVisual(mode,sourcecode, badpositions,commentareas, fulllength,step,
         comment = False
         for com in commentareas:
             if (focus >= com[0] and focus <= com[1] and lastfocus >= com[0] and lastfocus < com[1]):
-                focus = com[1]
-                #print("within")
+                focus = com[1]                
                 comment = True
             if (focus > com[0] and focus <= com[1] and  lastfocus < com[0]):
-                focus = com[0]
-                #print("before")
+                focus = com[0]              
                 comment = False
             elif (lastfocus >= com[0] and lastfocus < com[1] and focus > com[1]):
-                focus = com[1]
-                #print("up to the end")
+                focus = com[1]                
                 comment = True
-
-        #print([lastfocus,focus,comment, "["+sourcecode[lastfocus:focus]+"]"])
+        
         focusarea = sourcecode[lastfocus:focus]
 
         if(focusarea == "\n"):
@@ -594,9 +512,7 @@ def getblocksVisual(mode,sourcecode, badpositions,commentareas, fulllength,step,
                         if len(vectorlist) > 0:
                             p = predict(vectorlist,model)
                             if p >= 0:
-                                predictionWasMade = True
-
-                            #  print(p)
+                                predictionWasMade = True                          
                                 if vulnerablePos:
                                     if p > 0.5:
                                         color = "royalblue"
@@ -641,8 +557,7 @@ def getblocksVisual(mode,sourcecode, badpositions,commentareas, fulllength,step,
 
         try:
             if len(focusarea) > 0:
-                d = ImageDraw.Draw(img)
-                # print(list(focusarea))
+                d = ImageDraw.Draw(img)                
                 if focusarea[0] == "\n":
                     ypos = ypos + 11
                     xpos = 0
@@ -676,8 +591,7 @@ def getblocksVisual(mode,sourcecode, badpositions,commentareas, fulllength,step,
             break
     return blocks
 
-def getIdentifiers(mode,nr):
-    #print("Elke: getIdentifiers is used.")
+def getIdentifiers(mode,nr):    
     print("getting " + mode + " " + nr)
     if mode == "sql":
         if nr == "1":
@@ -778,30 +692,24 @@ def getIdentifiers(mode,nr):
     return result
 
 
-def getFromDataset(identifying,data):
-    print("Elke: getFromDataset is used.")
+def getFromDataset(identifying,data):    
     result = []
     rep = identifying[0]
     com = identifying[1]
-    myfile = identifying[2]
-    #print("\n")
-    #print("getting from dataset: " + rep + "/commit/" + com + " " + myfile)
+    myfile = identifying[2]   
     repfound = False
     comfound = False
     filefound = False
     for r in data:
-        if  "https://github.com/"+rep ==r:
-            #   print("  found repository.")
+        if  "https://github.com/"+rep ==r:            
             repfound = True
             for c in data[r]:
-                if c == com:
-                    #      print("    found commit.")
+                if c == com:                   
                     comfound = True
                     if "files" in data[r][c]:
                         for f in data[r][c]["files"].keys():
                             if myfile == f:
-                                filefound = True
-           #                    print("      found file")
+                                filefound = True          
                                 if "source" in data[r][c]["files"][f]:
                                     allbadparts = []
                                     sourcecode = data[r][c]["files"][f]["source"]

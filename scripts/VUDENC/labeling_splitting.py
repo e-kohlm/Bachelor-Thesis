@@ -7,13 +7,10 @@ import random
 import pickle
 import numpy
 from contextlib import redirect_stdout
-#import tensorflow as tf
-#from gensim.models import Word2Vec, KeyedVectors
-
 
 """
 This code was first implemented in VUDENC, in the makemodel.py. 
-Some changes are made:
+Some changes have been made:
 - the code snippets are stored differently, so they can be used with a Hugging Face model for finetuning.
   The data themselves or the method with which they are labeled has not been changed. 
 - But there is no w2v vectorization made, since the transformer model itself takes care of it.
@@ -104,19 +101,7 @@ cutoff2 = round(0.85 * len(keys))  # 15% for the validation set and 15% for the 
 
 keystrain = keys[:cutoff]              
 keysvalidation = keys[cutoff:cutoff2]  
-keystest = keys[cutoff2:]         
-
-#print("cutoff " + str(cutoff))
-#print("cutoff2 " + str(cutoff2))
-
-
-# Save keys of three datasets to file
-"""with open('../../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset_keystrain', 'w') as fp:
-    fp.write(str(keystrain))
-with open('../../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset_keysvalidation', 'w') as fp:
-    fp.write(str(keysvalidation))
-with open('../../VUDENC_data/' + 'EXAMPLE_' + mode + '_dataset_keystest', 'w') as fp:
-    fp.write(str(keystest))"""
+keystest = keys[cutoff2:] 
 
 training_set = []  
 validation_set = []
