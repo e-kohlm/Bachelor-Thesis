@@ -1,23 +1,9 @@
 from transformers import pipeline
 import json
-import VUDENC_utils
-#from fine_tuning import args.save_dir
-  
-# Inference
+from VUDENC import utils
 
-#https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.TextClassificationPipeline
-#https://huggingface.co/docs/transformers/task_summary#sequence-classification
-#TODO https://huggingface.co/docs/evaluate/a_quick_tour
-
-
-print("\nInference")
-# TODO load_best_model_at_end=true was macht das? ist aus tutorial_sequence_classification , den checkpoint musste ich trotzdem in Pfad packen
-# TODO ohne checkpoint wird keine config.json gefunden
-# TODO Dynamisch machen, nicht jeden checkpoint einzeln
-# TODO final checkpoint hat nicht die notwendigen Daten für Inference, warum? 
-
-
-classifier_cp_1 = pipeline(task="text-classification", model="saved_models/summarize_python" + "/checkpoint-280") #FIXME checkpoint hardgecoded und final_checkpoint
+#F IXME checkpoint hardgecoded und final_checkpoint missing
+classifier_cp_1 = pipeline(task="text-classification", model="saved_models/summarize_python" + "/checkpoint-860") 
 #classifier_f_cp = pipeline(task="text-classification", model=args.save_dir + "/final_checkpoint") # Dateien fehlen
 
 test_text = "tokenized_datasets = tokenized_datasets.remove_columns(['snippet_id']) tokenized_datasets = tokenized_datasets.rename_column('label', 'labels') tokenized_datasets.set_format('torch')"
@@ -31,11 +17,8 @@ print("vul_cp_1: ", classifier_cp_1(vul_snippet))
 print("not_vul_cp 1: ", classifier_cp_1(not_vul_snippet))
 
 
-print("########### Github code reingeben ##############")
+print("########### Test with Github code ##############")
 
-# TODO: Verstehen: der Text wird hier nicht tokenized, bzw. verstehen was da genau im Hintergrund passiert, auch wenn ich hier keinen tokenizer calle
-
-# aus demonstrate.py
 mode = 'sql'
 nr = '1'
 
@@ -43,25 +26,20 @@ rep = ""
 com = ""
 myfile = ""
 
-with open('../VUDENC_data/plain_' + mode, 'r') as infile:  # Warum lädt sie denn hier den file, der schon zum trainieren des models genutzt wurde?
-  data = json.load(infile)                       # nur zu demozwecken denke ich
+with open('../VUDENC_data/plain_' + mode, 'r') as infile:  # This date is used for demonstration purpose only
+  data = json.load(infile)                      
 
-identifying = VUDENC_utils.getIdentifiers(mode,nr)  # hier wird github repo ausgewählt, das aus vul getestet werden soll
-info = VUDENC_utils.getFromDataset(identifying,data) # data ist wieder repo und commit von datei, mit der ich trainiert habe
-                                                # es wird zu demozwecken nur das erste brauchbare repo bzw. commit geholt
-#print("info: ", info)                           # info ist nur 1 commit mit changes = demonstrate_get_from_dataset.txt
+identifying = utils.getIdentifiers(mode, nr)  
+info = utils.getFromDataset(identifying, data)          
 sourcefull = info[0]
-print("sourcefull:\n", sourcefull)
-print("type: ", type(sourcefull))
 lines = (sourcefull.count("\n"))
-print("lines: ", lines)
-commentareas = VUDENC_utils.findComments(sourcefull) # gibt liste mit anfangspos und endpos von einzeikigen # kommentaren zurück
-print("commentareas: ", commentareas) # rausnehmen, 
+commentareas = utils.findComments(sourcefull)
+
   
-def f2(repo_code=sourcefull):
+def pred(repo_code=sourcefull):
     line = 0
-    file = open("../test_outputs/generator_function.txt", 'a')
-    file.write("f2 is used\n" + repo_code + "*********")
+    file = open("../outputs/generator_function.txt", 'a')
+    file.write(repo_code + "*********")
     retval = ''
     for char in repo_code:
         file.write("\nchar: " + char)
@@ -79,8 +57,7 @@ def f2(repo_code=sourcefull):
     file.close()
     if retval:
         yield retval
-file = open("../test_outputs/generator_function.txt", 'a') ##Achtung überschreibt nicht, file wird länger und länger
-file.write(str(list(f2())))
-file.close()
 
-# TODO: function is ugly as hell und verstehen tu ich das auch nicht richtig, mit yield und der generator function
+file = open("../outputs/generator_function.txt", 'a') 
+file.write(str(list(pred())))
+file.close()
