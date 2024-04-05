@@ -4,7 +4,7 @@ import math
 import pprint
 import argparse
 from datasets import load_dataset, load_from_disk
-from transformers import AutoTokenizer, TrainingArguments, Trainer, AutoModelForSequenceClassification, pipeline, DataCollatorWithPadding
+from transformers import AutoTokenizer, TrainingArguments, Trainer, T5ForSequenceClassification, pipeline, DataCollatorWithPadding
 import json
 import evaluate
 import torch
@@ -154,11 +154,10 @@ def main(args):
  
     id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}   
     label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}
-   
-    model = AutoModelForSequenceClassification.from_pretrained(args.load,                                                           
-                                                            num_labels=2,
-                                                            id2label=id2label,
-                                                            label2id=label2id)    
+    model = T5ForSequenceClassification.from_pretrained(args.load,   
+                                                        num_labels=2,
+                                                        id2label=id2label,
+                                                        label2id=label2id)    
                                                             
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
 
