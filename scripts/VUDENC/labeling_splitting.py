@@ -90,7 +90,7 @@ for repository in data:
 keys = []
 
 # randomize the sample and split into train, validate and final test set
-print("number of code snippets: ", len(allblocks))
+print("\nnumber of code snippets: ", len(allblocks))
 for i in range(len(allblocks)):
     keys.append(i)
 

@@ -66,8 +66,7 @@ def findposition(badpart,sourcecode):
         badpart = badpart[:f]
 
     b = badpart.lstrip()
-    if len(b) < 1:
-        print(b)      
+    if len(b) < 1:           
         return[-1, -1]
 
     while not end:        
@@ -128,8 +127,7 @@ def findposition(badpart,sourcecode):
     if endfound < 0:
         startfound = -1
 
-    if endfound < 0 and startfound < 0: #and not "#" in badpart and not '"""' in badpart and not "'''" in badpart:      
-        print("badpart: ", badpart)       
+    if endfound < 0 and startfound < 0: #and not "#" in badpart and not '"""' in badpart and not "'''" in badpart:                     
         return[-1, -1]
     return position
 
