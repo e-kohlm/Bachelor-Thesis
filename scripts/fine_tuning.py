@@ -171,14 +171,15 @@ if __name__ == "__main__":
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str) 
 
     # Training
-    parser.add_argument('--epochs', default=10, type=int) 
-    parser.add_argument('--lr', default=5e-5, type=float)
-    parser.add_argument('--lr-warmup-steps', default=200, type=int)
-    parser.add_argument('--batch-size-per-replica', default=8, type=int)    
-    parser.add_argument('--grad-acc-steps', default=4, type=int)
-    parser.add_argument('--local_rank', default=-1, type=int)    
-    parser.add_argument('--deepspeed', default=None, type=str)
-    parser.add_argument('--fp16', default=False, action='store_true')
+    parser.add_argument('--epochs', default=10, type=int) # epochs
+    parser.add_argument('--lr', default=5e-5, type=float) # learning rate
+    parser.add_argument('--lr-warmup-steps', default=200, type=int) # learning rate
+    parser.add_argument('--batch-size-per-replica', default=8, type=int) # nicht dasselbe wie batch size, denke ich
+    #parser.add_argument('--batch-size', default=256, type=int)  #   nicht aus ursprünglichem fine-tuning sondern andere Stelle codeT5 
+    parser.add_argument('--grad-acc-steps', default=4, type=int) # instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
+    #parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training   
+    #parser.add_argument('--deepspeed', default=None, type=str) # intetration with deepspeed library
+    #parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration
 
     # Logging and stuff
     parser.add_argument('--save-dir', default="saved_models/summarize_python", type=str)

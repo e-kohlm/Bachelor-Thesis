@@ -1,24 +1,39 @@
-# Bachelor-Thesis
-## Description of the Feasibility Study
-Still draft version, so I apologize for the ugly code
+## Preprocessing VUDENC Data
+Download of VUDENC datasets from Zenodo:   
+https://zenodo.org/record/3559841#XeVaZNVG2Hs or    https://zenodo.org/records/10903584
+* plain_command_injection   
+* plain_open_redirect   
+* plain_path_disclosure   
+* plain_remote_code_execution  
+* plain_sql   
+* plain_xsrf   
+* plain_xss   
 
-## Step 1
-Downloaded VUDENC dataset plain_sql from Zenodo: URL https://zenodo.org/record/3559841#.XeVaZNVG2Hs, it is stored in VUDENC_data.
-Labeling and splitting of the data is done with labeling_splitting.py (which imports some functions from utils.py).
+
+The files need to be stored in the directory VUDENC_data for the script to run successfully.   
+Labeling and splitting of the data is done with¸ labeling_splitting.py (which imports some functions from `utils.py`).
 Run the script from `scripts/VUDENC/` with:  
 
 `python labeling_splitting.py`  
 
-The results are stored in `VUDENC_data`:  
+The results are stored in VUDENC_data:  
 
-* EXAMPLE_sql_dataset-TESTING  
-* EXAMPLE_sql_dataset-TRAINING  
-* EXAMPLE_sql_dataset-VALIDATION    
+* sql_dataset-TESTING  
+* sql_dataset-TRAINING  
+* sql_dataset-VALIDATION    
 
-Each file contains code snippets with a label (0 = not vulnerable, 1 = vulnerable) for each, stored in VUDENC_data.
-It is only a fraction of the data available for sql which alltogether consists of no more than 4000 snippets.   
+and for the other six vulnerabilities accordingly. There are smaller datasets with less code samples (three files with prefix EXAMPLE) provided. The files can be downloaded from
+https://zenodo.org/uploads/10962553   
 
-## Step 2
+ACHTUNG: Ist noch nicht die richtige url , so lange es noch nicht veröffentlich wurde.
+
+Each file contains code snippets with a label (0 = not vulnerable, 1 = vulnerable) for each.
+
+
+
+
+
+## Fine-tuning
 
 The script `fine_tuning.py` can be called with certain arguments, specified in the file. They have not all been tested yet, only the ones below.  
 
