@@ -1,4 +1,5 @@
 import os
+#os.environ["DS_SKIP_CUDA_CHECK"] = "1" #because of BUG: https://github.com/microsoft/DeepSpeed/issues/3223
 import time
 import math
 import pprint
@@ -6,18 +7,21 @@ import argparse
 from datasets import load_dataset, load_from_disk
 from transformers import (AutoTokenizer,
                         TrainingArguments,
-                         Trainer,
-                          T5ForSequenceClassification,
-                           pipeline,
-                           DataCollatorWithPadding,
-                           AutoModelForSequenceClassification,
-                           AutoModelForSeq2SeqLM)
-from accelerate import Accelerator
+                        Trainer,                          
+                        pipeline,
+                        DataCollatorWithPadding,
+                        AutoModelForSequenceClassification
+                        )
+import deepspeed
+from transformers.integrations import HfDeepSpeedConfig
+#from accelerate import Accelerator
 import json
 import evaluate
 import torch
 import numpy as np
 import optuna
+#from mpi4py import MPI
+
 
 
 def run_training(args, model, train_data, tokenizer):    
@@ -37,37 +41,33 @@ def run_training(args, model, train_data, tokenizer):
         predictions = np.argmax(tuple_element_1, axis=1)
         clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])    
         return clf_metrics.compute(predictions=predictions, references=labels)
+    
+    # Load DeepSpeed configuration
+    ds_config_file = '../deepspeed_config.json'
+    hf_deepspeed_config = HfDeepSpeedConfig(ds_config_file)
 
 
-    training_args = TrainingArguments(
-      
+    training_args = TrainingArguments(      
         report_to='tensorboard',
         output_dir=args.save_dir,
         overwrite_output_dir=False,
-
         do_train=True,
-        save_strategy='epoch',
-        #save_strategy="no", geht nicht, denn evaluation_strategy muss gleich sein to save_strategy; 
-        evaluation_strategy="epoch",            
-
+        save_strategy='epoch',        
+        eval_strategy="epoch",  
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size_per_replica,
         gradient_accumulation_steps=args.grad_acc_steps,
-
         learning_rate=args.lr,
         weight_decay=0.05,
         warmup_steps=args.lr_warmup_steps,
-
         logging_dir=args.save_dir,
         logging_first_step=True,
-        logging_steps=args.log_freq, # commented out for gpu
-        save_total_limit=1, #commented out for gpu no change still out of mem
-
+        logging_steps=args.log_freq, 
+        save_total_limit=1,
         dataloader_drop_last=True,
         dataloader_num_workers=4,
-
         local_rank=args.local_rank,
-        deepspeed=args.deepspeed,
+        deepspeed=ds_config_file,
         fp16=args.fp16,
         push_to_hub=False, 
         metric_for_best_model="f1", #new
@@ -83,27 +83,13 @@ def run_training(args, model, train_data, tokenizer):
         tokenizer=tokenizer,        
         compute_metrics=compute_metrics,       
 
-    )
-
-    """best_trials=trainer.hyperparameter_search(
-            direction=["minimize", "maximize"],
-            backend="optuna",
-            hp_space=optuna_hp_space,
-            n_trials=20,
-            compute_objective=compute_objective,
-    )"""
-
-    
+    )   
    
     trainer.train()
     trainer.save_model() # added by me later: worked with cpu, sql mit 'data_num': 5000 samples
     
-
-    
-
     # Evaluate the model on the test dataset   
     finaltest_set = train_data['test']
-
     results = trainer.evaluate(eval_dataset=finaltest_set)  
     prediction = trainer.predict(test_dataset=finaltest_set)
     print("results: ", results)
@@ -112,8 +98,7 @@ def run_training(args, model, train_data, tokenizer):
     if args.local_rank in [0, -1]: 
         final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint")         
         model.save_pretrained(final_checkpoint_dir)
-        print(f'  ==> Finish training and save to {final_checkpoint_dir}')
-        
+        print(f'  ==> Finish training and save to {final_checkpoint_dir}')        
     
     
     end_time = time.time()
@@ -137,10 +122,7 @@ def load_tokenize_data(args, tokenizer):
 
 
         data_files = {"train": file_path + training_set, "validation": file_path + validation_set, "test": file_path + test_set}
-        datasets = load_dataset("json", data_files=data_files)    
-
-
-        
+        datasets = load_dataset("json", data_files=data_files)           
 
         #data_collator = DataCollatorWithPadding(tokenizer=tokenizer) #neu
 
@@ -196,15 +178,7 @@ def main(args):
                                                         num_labels=2,
                                                         id2label=id2label,
                                                         label2id=label2id).to(device)
-    #model = accelerator.prepare(model) #, training_dataloader, scheduler) #optimizer
-    """for batch in training_dataloader:
-        optimizer.zero_grad()
-        inputs, targets = batch
-        outputs = model(inputs)
-        loss = loss_function(outputs, targets)
-        accelerator.backward(loss)
-        #optimizer.step()
-        #scheduler.step()"""
+    
                                                          
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
 
@@ -222,16 +196,16 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', default=10, type=int) # epochs
     parser.add_argument('--lr', default=5e-5, type=float) # learning rate
     parser.add_argument('--lr-warmup-steps', default=200, type=int) # learning rate
-    parser.add_argument('--batch-size-per-replica', default=1, type=int) # nicht dasselbe wie batch size, denke ich default=8
-    #parser.add_argument('--batch-size', default=256, type=int)  #   nicht aus ursprünglichem fine-tuning sondern andere Stelle codeT5 
+    parser.add_argument('--batch-size-per-replica', default=8, type=int) # nicht dasselbe wie batch size, denke ich default=8
+    #parser.add_argument('--batch-size-per-device', default=1, type=int)  #   nicht aus ursprünglichem fine-tuning sondern andere Stelle codeT5 
     parser.add_argument('--grad-acc-steps', default=4, type=int) # instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
     parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
-    parser.add_argument('--deepspeed', default=None, type=str) # intetration with deepspeed library
-    parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration
+    parser.add_argument('--deepspeed', default="deepspeed_config.json", type=str) # interacion with deepspeed library default = None
+    parser.add_argument('--fp16', default=True, action='store_true') # with mixed precision for training acceleration default = False
 
     # Logging and stuff
     parser.add_argument('--save-dir', default="../saved_models/", type=str)
-    parser.add_argument('--log-freq', default=10, type=int) commented out for gpu
+    parser.add_argument('--log-freq', default=10, type=int) #commented out for gpu
     parser.add_argument('--save-freq', default=500, type=int)       # default = 500   #commented out for gpu
 
     args = parser.parse_args()

@@ -21,3 +21,24 @@ SW: Model with 737M total params, 32M largest layer params.
    16.49GB |   1.50GB | offload_param=none, offload_optimizer=OffloadDeviceEnum.cpu, zero_init=0
     0.18GB |  12.49GB | offload_param=none, offload_optimizer=none, zero_init=1
     4.12GB |  12.49GB | offload_param=none, offload_optimizer=none, zero_init=0`
+
+
+### opensuse auf gruenau2
+cat /etc/os-release to display OpenSUSE/SUSE Linux version
+NAME="openSUSE Leap"
+VERSION="15.5"
+ID="opensuse-leap"
+ID_LIKE="suse opensuse"
+VERSION_ID="15.5"
+PRETTY_NAME="openSUSE Leap 15.5"
+ANSI_COLOR="0;32"
+CPE_NAME="cpe:/o:opensuse:leap:15.5"
+BUG_REPORT_URL="https://bugs.opensuse.org"
+HOME_URL="https://www.opensuse.org/"
+DOCUMENTATION_URL="https://en.opensuse.org/Portal:Leap"
+LOGO="distributor-logo-Leap"
+cat: to: Datei oder Verzeichnis nicht gefunden
+cat: display: Datei oder Verzeichnis nicht gefunden
+cat: OpenSUSE/SUSE: Datei oder Verzeichnis nicht gefunden
+cat: Linux: Datei oder Verzeichnis nicht gefunden
+cat: version: Datei oder Verzeichnis nicht gefunden
