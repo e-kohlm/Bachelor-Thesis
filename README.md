@@ -1,6 +1,6 @@
 ## Preprocessing VUDENC Data
 Download of VUDENC datasets from Zenodo:   
-https://zenodo.org/record/3559841#XeVaZNVG2Hs or    https://zenodo.org/records/10903584
+https://zenodo.org/record/3559841#XeVaZNVG2Hs
 * plain_command_injection   
 * plain_open_redirect   
 * plain_path_disclosure   
