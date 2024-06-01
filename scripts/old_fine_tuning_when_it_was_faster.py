@@ -4,18 +4,14 @@ import math
 import pprint
 import argparse
 from datasets import load_dataset, load_from_disk
-from transformers import (AutoTokenizer,
-                        TrainingArguments,
-                         Trainer,
-                          T5ForSequenceClassification,
-                           pipeline,
-                           DataCollatorWithPadding,
-                           AutoModelForSequenceClassification,
-                           AutoModelForSeq2SeqLM)
+from transformers import AutoTokenizer, TrainingArguments, Trainer, AutoModelForSequenceClassification, pipeline, DataCollatorWithPadding
+#AutoModelForSeq2SeqLM
 import json
 import evaluate
 import torch
 import numpy as np
+
+# STAND: Feasibility study step 2 nach Mail: 938 Std. 
 
 
 def run_training(args, model, train_data, tokenizer):    
@@ -38,15 +34,13 @@ def run_training(args, model, train_data, tokenizer):
 
 
     training_args = TrainingArguments(
-      
         report_to='tensorboard',
         output_dir=args.save_dir,
         overwrite_output_dir=False,
 
         do_train=True,
         save_strategy='epoch',
-        #save_strategy="no", #neu
-        evaluation_strategy="epoch",        
+        evaluation_strategy="epoch",
 
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size_per_replica,
@@ -68,7 +62,6 @@ def run_training(args, model, train_data, tokenizer):
         deepspeed=args.deepspeed,
         fp16=args.fp16,
         push_to_hub=False, 
-        load_best_model_at_end=True, #added later by me
     )
 
     trainer = Trainer(
@@ -82,9 +75,6 @@ def run_training(args, model, train_data, tokenizer):
     )   
    
     trainer.train()
-    trainer.save_model() # added by me later: worked with cpu, sql mit 'data_num': 5000 samples    
-
-   
 
     # Evaluate the model on the test dataset   
     finaltest_set = train_data['test']
@@ -95,8 +85,7 @@ def run_training(args, model, train_data, tokenizer):
     print("prediction: ", prediction)
 
     if args.local_rank in [0, -1]:
-        final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint") #alt
-        #final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint", "model.pt") # test: no
+        final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint")
         model.save_pretrained(final_checkpoint_dir)
         print(f'  ==> Finish training and save to {final_checkpoint_dir}')
     
@@ -106,9 +95,9 @@ def run_training(args, model, train_data, tokenizer):
     print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
 
 
-def load_tokenize_data(args, tokenizer):      
-    vulnerability_type = args.vuln_type
-    # Check if train_data already exists in cache_data/
+def load_tokenize_data(args, tokenizer):  
+
+    # Check if train_data already exists in cache_data/summarize_python
     if os.path.exists(args.cache_data):
         train_data = load_from_disk(args.cache_data)
         print(f'\n  ==> Loaded {len(train_data)} samples')
@@ -116,18 +105,13 @@ def load_tokenize_data(args, tokenizer):
     # Load data
     else: 
         file_path = "../VUDENC_data/"
-        training_set = vulnerability_type + "_dataset-TRAINING"
-        validation_set = vulnerability_type + "_dataset-VALIDATION"
-        test_set = vulnerability_type + "_dataset-TESTING"
+        training_set = "sql_dataset-TRAINING"
+        validation_set = "sql_dataset-VALIDATION"
+        test_set = "sql_dataset-TESTING"
 
 
         data_files = {"train": file_path + training_set, "validation": file_path + validation_set, "test": file_path + test_set}
         datasets = load_dataset("json", data_files=data_files)    
-
-
-        
-
-        #data_collator = DataCollatorWithPadding(tokenizer=tokenizer) #neu
 
         def preprocess_function(examples):         
                  
@@ -135,7 +119,6 @@ def load_tokenize_data(args, tokenizer):
       
         train_data = datasets.map(
             preprocess_function,
-            #data_collator, #neu
             batched=True,            
             num_proc=64,           
         )    
@@ -143,12 +126,7 @@ def load_tokenize_data(args, tokenizer):
         train_data = train_data.remove_columns(["snippet_id"])
         train_data = train_data.rename_column("label", "labels")
         train_data.set_format("torch")
-        print("train_data: ", train_data)   
-
-        
-       
-
-
+        print("train_data: ", train_data)    
         
 
         print(f'\n  ==> Tokenized {len(train_data)} samples')        
@@ -159,14 +137,14 @@ def load_tokenize_data(args, tokenizer):
 
 def main(args): 
     argsdict = vars(args) 
-    #print("Arguments:\n", pprint.pformat(argsdict))
+    print("Arguments:\n", pprint.pformat(argsdict))
    
     with open(os.path.join(args.save_dir, "command.txt"), 'w') as f:
         f.write(pprint.pformat(argsdict))
  
     tokenizer_max_len = 512
     tokenizer_config = {'max_len': tokenizer_max_len}    
-    tokenizer = AutoTokenizer.from_pretrained(args.load) #, **tokenizer_config)
+    tokenizer = AutoTokenizer.from_pretrained(args.load, **tokenizer_config)
 
     train_data = load_tokenize_data(args, tokenizer=tokenizer)  
 
@@ -178,12 +156,17 @@ def main(args):
     
  
     id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}   
-    label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}    
-    model = AutoModelForSequenceClassification.from_pretrained(args.load, #3170 hours   
+    label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}
+    """model = AutoModelForSeq2SeqLM.from_pretrained(args.load,   
                                                         num_labels=2,
                                                         id2label=id2label,
-                                                        label2id=label2id)
-                                                              
+                                                        label2id=label2id)""" 
+   
+    model = AutoModelForSequenceClassification.from_pretrained(args.load,                                                           
+                                                            num_labels=2,
+                                                            id2label=id2label,
+                                                            label2id=label2id) 
+                                                            
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
 
     run_training(args, model, train_data, tokenizer=tokenizer)
@@ -191,21 +174,19 @@ def main(args):
 
 if __name__ == "__main__": 
     parser = argparse.ArgumentParser(description="CodeT5+ finetuning on sequence classification task")
-    parser.add_argument('--vuln-type', default="sql", type=str)  
     parser.add_argument('--data-num', default=-1, type=int)  
-    parser.add_argument('--cache-data', default='cache_data/', type=str)
+    parser.add_argument('--cache-data', default='cache_data/summarize_python', type=str)
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str) 
 
     # Training
-    parser.add_argument('--epochs', default=10, type=int) # epochs
-    parser.add_argument('--lr', default=5e-5, type=float) # learning rate
-    parser.add_argument('--lr-warmup-steps', default=200, type=int) # learning rate
-    parser.add_argument('--batch-size-per-replica', default=8, type=int) # nicht dasselbe wie batch size, denke ich
-    #parser.add_argument('--batch-size', default=256, type=int)  #   nicht aus ursprünglichem fine-tuning sondern andere Stelle codeT5 
-    parser.add_argument('--grad-acc-steps', default=4, type=int) # instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
-    parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
-    parser.add_argument('--deepspeed', default=None, type=str) # intetration with deepspeed library
-    parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration
+    parser.add_argument('--epochs', default=10, type=int) 
+    parser.add_argument('--lr', default=5e-5, type=float)
+    parser.add_argument('--lr-warmup-steps', default=200, type=int)
+    parser.add_argument('--batch-size-per-replica', default=8, type=int)    
+    parser.add_argument('--grad-acc-steps', default=4, type=int)
+    parser.add_argument('--local_rank', default=-1, type=int)    
+    parser.add_argument('--deepspeed', default=None, type=str)
+    parser.add_argument('--fp16', default=False, action='store_true')
 
     # Logging and stuff
     parser.add_argument('--save-dir', default="saved_models/summarize_python", type=str)

@@ -1,4 +1,10 @@
 import os
+#os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:64" # not working
+#os.environ['CUDA_VISIBLE_DEVICES']='2, 3' #notworking
+import gc
+
+
+
 import time
 import math
 import pprint
@@ -16,6 +22,20 @@ import json
 import evaluate
 import torch
 import numpy as np
+
+
+# OutOfMemory issue auch mit batch-size-per-replica=1
+# https://saturncloud.io/blog/how-to-solve-cuda-out-of-memory-error-in-pytorch/ sagt Hauptgrund ist ein zu großes model, was ich nicht lösen kann
+# die gruenaus sind CUDA Y 11.8
+# torch.cuda.OutOfMemoryError: CUDA out of memory.
+# Tried to allocate 20.00 MiB. GPU 2 has a total capacity of 79.32 GiB of which 4.50 MiB is free.
+# Process 32777 has 76.96 GiB memory in use. => das ist ein Prozess von wem anders auf gruenau!
+# Including non-PyTorch memory, this process has 2.33 GiB memory in use. 
+# Of the allocated memory 1.62 GiB is allocated by PyTorch, and 21.76 MiB is reserved by PyTorch but unallocated.
+
+# nur mit ml env
+#python -c "import torch; print(torch.cuda.get_device_name(0));"
+#Tesla V100-PCIE-32GB
 
 
 def run_training(args, model, train_data, tokenizer):    
@@ -82,9 +102,11 @@ def run_training(args, model, train_data, tokenizer):
     )   
    
     trainer.train()
-    trainer.save_model() # added by me later: worked with cpu, sql mit 'data_num': 5000 samples    
+    trainer.save_model() # added by me later: worked with cpu, sql mit 'data_num': 5000 samples
+    
 
-   
+    # https://discuss.huggingface.co/t/save-only-best-model-in-trainer/8442
+    # You can set save_strategy to NO to avoid saving anything and save the final model once training is done with trainer.save_model()
 
     # Evaluate the model on the test dataset   
     finaltest_set = train_data['test']
@@ -94,11 +116,12 @@ def run_training(args, model, train_data, tokenizer):
     print("results: ", results)
     print("prediction: ", prediction)
 
-    if args.local_rank in [0, -1]:
+    if args.local_rank in [0, -1]: # ggfs. ist final_checkpoint egal;
         final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint") #alt
         #final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint", "model.pt") # test: no
         model.save_pretrained(final_checkpoint_dir)
         print(f'  ==> Finish training and save to {final_checkpoint_dir}')
+        # todo: config.json pytorch_model.bin these two files are the model, see https://huggingface.co/learn/nlp-course/chapter2/3
     
     
     end_time = time.time()
@@ -164,8 +187,8 @@ def main(args):
     with open(os.path.join(args.save_dir, "command.txt"), 'w') as f:
         f.write(pprint.pformat(argsdict))
  
-    tokenizer_max_len = 512
-    tokenizer_config = {'max_len': tokenizer_max_len}    
+    #tokenizer_max_len = 512                                        # mit order ohne das hat keine Auswirkung auf speed
+    #tokenizer_config = {'max_len': tokenizer_max_len}    
     tokenizer = AutoTokenizer.from_pretrained(args.load) #, **tokenizer_config)
 
     train_data = load_tokenize_data(args, tokenizer=tokenizer)  
@@ -178,15 +201,50 @@ def main(args):
     
  
     id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}   
-    label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}    
-    model = AutoModelForSequenceClassification.from_pretrained(args.load, #3170 hours   
+    label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1} 
+    #Finetune CodeT5+ models on any Seq2Seq LM tasks sagt CodeT5  
+    """model = AutoModelForSeq2SeqLM.from_pretrained(args.load,   
                                                         num_labels=2,
                                                         id2label=id2label,
-                                                        label2id=label2id)
-                                                              
+                                                        label2id=label2id)  # ValueError: not enough values to unpack (expected 2, got 1)"""
+    """model = AutoModelForSequenceClassification.from_pretrained(args.load, #3170 hours   nach Mail: 911 hours
+                                                        num_labels=2,
+                                                        id2label=id2label,
+                                                        label2id=label2id)"""
+    
+
+    #device = "cuda"  # for GPU usage or "cpu" for CPU usage
+    test = torch.cuda.is_available()
+    print("test: ", test) #output: true
+    X_train = torch.FloatTensor([0., 1., 2.])
+    test_zwei = X_train.is_cuda
+    print("tess 2: ", test_zwei) # output: false
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print("device: ", device)
+
+
+    #device = torch.device('cuda:0')
+    
+
+    # todo: is T5ForSequ the right one?
+    model = T5ForSequenceClassification.from_pretrained(args.load,   #slow as hell: 1665 hours, nach Mail: 908 hours 52.51s/it bei sql, 175 hours bei xss
+                                                        num_labels=2,
+                                                        id2label=id2label,
+                                                        label2id=label2id).to(device)                                                         
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
 
+    #gc.collect() # not working
+    # torch.cuda.empty_cache() not working
+    train_data = torch.FloatTensor([0., 1., 2.])
+    test_drei = train_data.is_cuda
+    print("test_drei: ", test_drei) # output: false
     run_training(args, model, train_data, tokenizer=tokenizer)
+
+    run: nice -n 19 python GPU_fine_tuning.py --vuln-type=sql --cache-data=cache_data/sql --batch-size-per-replica=4 --save-dir=saved_models/summarize_python/GPU/sql
+    https://wandb.ai/wandb/common-ml-errors/reports/How-To-Use-GPU-with-PyTorch---VmlldzozMzAxMDk
+    Error: train_dataset=train_data["train"],
+                  ~~~~~~~~~~^^^^^^^^^
+    IndexError: too many indices for tensor of dimension 1
 
 
 if __name__ == "__main__": 
