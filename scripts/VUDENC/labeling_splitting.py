@@ -9,7 +9,7 @@ import numpy
 from contextlib import redirect_stdout
 
 """
-This code was first implemented in VUDENC, in the makemodel.py. 
+This code was first implemented in VUDENC, in the file makemodel.py. 
 Some changes have been made:
 - the code snippets are stored differently, so they can be used with a Hugging Face model for finetuning.
   The data themselves or the method with which they are labeled has not been changed. 
@@ -28,7 +28,7 @@ if (len(sys.argv) > 1):
 progress = 0
 count = 0
 
-# paramters for the filtering and creation of samples
+# Paramters for the filtering and creation of samples
 restriction = [20000, 5, 6, 10]  # which samples to filter out
 step = 5  # step lenght n in the description
 fulllength = 200  # context length m in the description
@@ -44,10 +44,8 @@ print("finished loading. ", nowformat)
 
 allblocks = []
 snippet_id = 0
-i = 0               
-for repository in data:
-    i += 1          # TODO: Just for the example code, the feasibility test, remove later
-    #if i < 4:       # TODO: Just for the example code, the feasibility test, remove later
+             
+for repository in data:    
     
     progress = progress + 1
     print("\nprogress: ", progress)
@@ -65,7 +63,8 @@ for repository in data:
 
                     allbadparts = []
                     for change in data[repository][commit]["files"][f]["changes"]:
-                        # get the modified or removed parts from each change that happened in the commit
+                        
+                        # Get the modified or removed parts from each change that happened in the commit
                         badparts = change["badparts"]
                         count = count + len(badparts)
 
@@ -76,9 +75,9 @@ for repository in data:
                     if len(allbadparts) > 0:
                         positions = utils.findpositions(allbadparts, sourcecode)
 
-                        # get the file split up in samples
+                        # Get the file split up in samples
                         blocks = utils.getblocks(sourcecode, positions, step, fulllength)
-                        #print("blocks: ", blocks)
+                       
                         for b in blocks:                         
                             block_dict = {}   
                             block_dict['snippet_id'] = snippet_id                                                           
@@ -89,14 +88,14 @@ for repository in data:
 
 keys = []
 
-# randomize the sample and split into train, validate and final test set
+# Randomize the sample and split into train, validate and final test set
 print("\nnumber of code snippets: ", len(allblocks))
 for i in range(len(allblocks)):
     keys.append(i)
 
 random.shuffle(keys)
 
-cutoff = round(0.7 * len(keys))  # 70% for the training set
+cutoff = round(0.7 * len(keys))    # 70% for the training set
 cutoff2 = round(0.85 * len(keys))  # 15% for the validation set and 15% for the final test set
 
 keystrain = keys[:cutoff]              
@@ -130,7 +129,7 @@ now = datetime.now()
 nowformat = now.strftime("%H:%M")
 print("time: ", nowformat)
 
-# saving samples
+# Saving samples
 with open('../../VUDENC_data/' + mode + '_dataset-TRAINING', 'w') as fp:
     fp.write(json.dumps(training_set))
 
