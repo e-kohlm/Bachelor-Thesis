@@ -245,7 +245,7 @@ def getblocks(sourcecode, badpositions, step, fulllength):
                 
                 singleblock = []
                 singleblock.append(sourcecode[context[0]:context[1]])                
-                singelblock_length.append(len(sourcecode[context[0]:context[1]])) # meins
+                singelblock_length.append(len(sourcecode[context[0]:context[1]]))
                 singleblock.append(label)                                
 
                 already = False
