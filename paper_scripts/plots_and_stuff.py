@@ -21,26 +21,28 @@ def get_label_balance(dataset):
     print("size:", df_dataset.size)
     print("shape:", df_dataset.shape)
     print("rows: ", df_dataset.shape[0])
+    print("columns: ", df_dataset.shape[1])
     print("head:", df_dataset.head(10))
     number_not_vulnerable = (df_dataset['label'].values == 0).sum()
     number_vulnerable = (df_dataset['label'].values == 1).sum()
     print("number not vuln: ", number_not_vulnerable)
-    print("number vuln: ", number_vulnerable)
-    
-    #todo: so far so good, but I want percentage
+    print("number vuln: ", number_vulnerable)   
+   
     
     test = number_vulnerable + number_not_vulnerable   
-    if test != rows:
+    if test != df_dataset.shape[0]:
         print("UWAGA!")    
 
     balance_dict = {}
-    balance_dict['number_rows'] = rows 
+    balance_dict['number_rows'] = df_dataset.shape[0]
     balance_dict['number_vulnerable'] = number_vulnerable 
     balance_dict['number_not_vulnerable'] = number_not_vulnerable 
 
     return balance_dict
 
-
+def compute_percent_vulnerable(train_balance):
+    percentage_vulnerable = (100 * train_balance['number_vulnerable']) / train_balance['number_rows'] 
+    return percentage_vulnerable
 
 
 def main(args): 
@@ -49,6 +51,8 @@ def main(args):
     datasets = load_data(argsdict["vuln"])   
     train_balance = get_label_balance(datasets['train'])
     print("train_balance: ", train_balance)
+    percentage_vulnerable = compute_percent_vulnerable(train_balance)
+    print("percent_vuln: ", percentage_vulnerable)
 
 
 if __name__ == "__main__": 
