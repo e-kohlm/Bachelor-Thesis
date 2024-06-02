@@ -14,8 +14,9 @@ The files need to be stored in the directory VUDENC_data for the script to run s
 Labeling and splitting of the data is done with¸ labeling_splitting.py (which imports some functions from `utils.py`).
 Run the script from `scripts/VUDENC/` with:  
 
-`python labeling_splitting.py`  
+`python labeling_splitting.py <mode>` 
 
+Possible modes are command_injection, sql, and so on.   
 The results are stored in VUDENC_data:  
 
 * sql_dataset-TESTING  
