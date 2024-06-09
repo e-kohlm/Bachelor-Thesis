@@ -24,11 +24,12 @@ def run_training(args, train_data, tokenizer, trial=None):
     def model_init(trial):        
         id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}   
         label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}    
-        device = "cpu"  # "cuda" for gpu       
+        device = "cpu" # "cuda" for GPU usage or "cpu" for CPU usage     
         model = AutoModelForSequenceClassification.from_pretrained(args.load,
                                                         num_labels=2,
                                                         id2label=id2label,
-                                                        label2id=label2id).to(device)                                                        
+                                                        label2id=label2id).to(device)
+        print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")                                                         
         return model 
 
 
@@ -110,7 +111,7 @@ def run_training(args, train_data, tokenizer, trial=None):
         storage='sqlite:///hp_search.db',
         #compute_objective=compute_objective,
     )
-    print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}") 
+    
     print("\nBest trial:\n", best_trial)
 
     end_time = time.time()
@@ -141,10 +142,20 @@ def main(args):
         xxx = run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)            
         # You could define your own compute_objective function, if not defined, the default compute_objective will be called,
         # and the sum of eval metric like f1 is returned as objective value.
+
+        # compute_metrics beim training wegzulassen hat keine Punkte gebracht, schien auch nicht F1 zu sein und noch weniger
+        # nachvollziehbar ...
+
         #return run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)  
         # return evaluation_score ist richtig 
+        
+        
+        
         print("TEST f1 value ist das : ", xxx)
-        #results = trainer.evaluate(eval_dataset=finaltest_set)  
+        f1_metric = evaluate.load("f1") # nur dafür da, mir die Beispiele auszugeben
+        print("f1: ", f1_metric)
+        
+        
 
     study = optuna.create_study(
         #study_name='hp_search_' + args.vuln_type,
@@ -152,8 +163,6 @@ def main(args):
         storage='sqlite:///hp_search.db',
         #load_if_exists=True
         )
-    
-
 
     test = study.optimize(objective, n_trials=args.n_trials)
     print("test: ", test)
