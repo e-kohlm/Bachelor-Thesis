@@ -12,7 +12,6 @@ from transformers import (
                         AutoModelForSequenceClassification,
                         EarlyStoppingCallback
                         )
-
 import json
 import evaluate
 import torch
@@ -55,7 +54,7 @@ def run_training(args, train_data, tokenizer, model=None, trial=None):
         }   
     
            
-    hyperparameters = optuna_hp_space(trial)
+    #hyperparameters = optuna_hp_space(trial)
 
     training_args = TrainingArguments(                
         report_to='tensorboard',        
@@ -63,12 +62,14 @@ def run_training(args, train_data, tokenizer, model=None, trial=None):
         save_strategy='epoch',        
         eval_strategy="epoch",
         num_train_epochs=args.epochs,
+        #metric_for_best_model="f1",
+        #load_best_model_at_end=True, 
         
-        learning_rate=hyperparameters["learning_rate"],
-        per_device_train_batch_size=hyperparameters["per_device_train_batch_size"],        
-        gradient_accumulation_steps=hyperparameters["gradient_accumulation_steps"],     
+        learning_rate=optuna_hp_space(trial)["learning_rate"],
+        per_device_train_batch_size=optuna_hp_space(trial)["per_device_train_batch_size"],        
+        gradient_accumulation_steps=optuna_hp_space(trial)["gradient_accumulation_steps"],     
         weight_decay=0.05,
-        warmup_steps=hyperparameters["warmup_steps"],
+        warmup_steps=optuna_hp_space(trial)["warmup_steps"],
 
         output_dir=args.save_dir,
         overwrite_output_dir=False,
@@ -81,9 +82,7 @@ def run_training(args, train_data, tokenizer, model=None, trial=None):
         local_rank=args.local_rank,
         deepspeed=args.deepspeed,
         fp16=args.fp16,
-        push_to_hub=False, 
-        metric_for_best_model="f1",
-        #load_best_model_at_end=True, 
+        push_to_hub=False,        
         )      
 
     def model_init(trial):
@@ -128,7 +127,7 @@ def run_training(args, train_data, tokenizer, model=None, trial=None):
     )
 
  
-    print("best_trial", best_trial)
+    print("\nBest_trial:\n", best_trial)
     end_time = time.time()
     time_elapsed = end_time - start_time
     print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
@@ -200,6 +199,7 @@ def main(args):
 
         # error because f1 is not defined
         #return f1
+        
     
     study = optuna.create_study(
         #study_name='hp_search_' + args.vuln_type,
