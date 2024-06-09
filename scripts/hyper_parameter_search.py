@@ -58,18 +58,13 @@ def run_training(args, train_data, tokenizer, model=None, trial=None):
 
         }
 
-    if trial: 
-        print("2. if trial: ", trial)
-        hyperparameters = optuna_hp_space(trial)
-        learning_rate = hyperparameters["learning_rate"]
-        per_device_train_batch_size = hyperparameters["per_device_train_batch_size"]        
-        #grad_acc_steps = hyperparameters["grad_acc_steps"] 
-        epochs = 1
-    else:
-        learning_rate = args.lr
-        per_device_train_batch_size = args.batch-size-per-replica   
-        grad_acc_steps = args.grad-acc-steps
-        epochs = args.epochs
+   
+    print("2. if trial: ", trial)
+    hyperparameters = optuna_hp_space(trial)
+    learning_rate = hyperparameters["learning_rate"]
+    per_device_train_batch_size = hyperparameters["per_device_train_batch_size"]        
+    #grad_acc_steps = hyperparameters["grad_acc_steps"]         
+    
 
     training_args = TrainingArguments(      
         report_to='tensorboard',
@@ -126,48 +121,26 @@ def run_training(args, train_data, tokenizer, model=None, trial=None):
 
     )
 
-    if trial:  # If we're running hyperparameter search
-        print("\n if trial: ", trial)
-        print(f'  ==> Started trial {trial.number}')
-        
-        best_trial = trainer.hyperparameter_search(
-                     
-            direction="maximize",
-            backend="optuna",
-            n_trials=args.n_trials,
-            hp_space=optuna_hp_space,
-            #compute_objective=compute_objective,
-        )
+    
+    print("\n if trial: ", trial)
+    print(f'\n  ==> Started trial {trial.number}')
+    
+    best_trial = trainer.hyperparameter_search(
+                    
+        direction="maximize",
+        backend="optuna",
+        n_trials=args.n_trials,
+        hp_space=optuna_hp_space,
+        #compute_objective=compute_objective,
+    )
 
  
-        print("best_trial", best_trial)
-        end_time = time.time()
-        time_elapsed = end_time - start_time
-        print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
+    print("best_trial", best_trial)
+    end_time = time.time()
+    time_elapsed = end_time - start_time
+    print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
         
-    else:
-        print("\n if not trial: ", trial)
     
-        trainer.train()    
-        trainer.save_model() 
-
-        # Evaluate the model on the test dataset   
-        finaltest_set = train_data['test']
-
-        results = trainer.evaluate(eval_dataset=finaltest_set)  
-        prediction = trainer.predict(test_dataset=finaltest_set)
-        print("results: ", results)
-        print("prediction: ", prediction)
-
-        if args.local_rank in [0, -1]: 
-            final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint")         
-            model.save_pretrained(final_checkpoint_dir)
-            print(f'  ==> Finished training and saved to {final_checkpoint_dir}')       
-        
-        
-        end_time = time.time()
-        time_elapsed = end_time - start_time
-        print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
 
 def main(args): 
     argsdict = vars(args) 
@@ -187,71 +160,63 @@ def main(args):
         train_data['test'] = [train_data['test'][i]for i in range(math.ceil(args.data_num * 15 / 100))]       
     
  
-    if args.hyperparameter_search:
-        print("\n ==> Start hyper-parameter search")
+    
+    print("\n ==> Start hyper-parameter search")
 
        
 
-        def objective(trial):
-            run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)            
-            # You could define your own compute_objective function, if not defined, the default compute_objective will be called,
-            # and the sum of eval metric like f1 is returned as objective value.
-            #return run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)  
-            # return evaluation_score ist richtig 
-            
-            #results = trainer.evaluate(eval_dataset=finaltest_set)     
-
-            def compute_metrics(eval_pred):        
-                print("\n DDDDcompute_metrics: ")
-                predictions, labels = eval_pred 
-                tuple_element_1 = np.asarray(predictions[0])
-                tuple_element_2 = np.asarray(predictions[1])
-                predictions = np.argmax(tuple_element_1, axis=1)
-                clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])    
-                return clf_metrics.compute(predictions=predictions, references=labels)     
-            
-
-            accuracy = evaluate.load("accuracy")
-            f1_metric = evaluate.load("f1")
-            precision = evaluate.load("precision")
-            recall = evaluate.load("recall")
-            print("f1: ", f1_metric)
-            
-            #results = f1_metric.compute(references=references, predictions=predictions, average=None)
-            #print(results) # das ist das, wo die Beispiele rauskommen
-            
-            #f_test = compute_metrics(f1_metric)
-            #print("f_test: ", f_test)
-            #print("f_test 1", f_test[1])
-
-            
-       
-            #trial.report(f1, epoch)
-
-            # Handle pruning based on the intermediate value.
-            #if trial.should_prune():
-                #raise optuna.exceptions.TrialPruned()  
-
-            # error because f1 is not defined
-            #return f1
+    def objective(trial):
+        run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)            
+        # You could define your own compute_objective function, if not defined, the default compute_objective will be called,
+        # and the sum of eval metric like f1 is returned as objective value.
+        #return run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)  
+        # return evaluation_score ist richtig 
         
-        study = optuna.create_study(
-            #study_name='hp_search_' + args.vuln_type,
-            direction="maximize",
-            storage='sqlite:///hp_search.db',
-            #load_if_exists=True
-            )
-        test = study.optimize(objective, n_trials=args.n_trials)
-        print("test: ", test)
-        print("Best trial:")
-        trial = study.best_trial
+        #results = trainer.evaluate(eval_dataset=finaltest_set)     
+        
+        
 
-        print(f"  Value: {trial.value}")
-        print("  Params: ")
-        for key, value in trial.params.items():
-            print(f"    {key}: {value}")
+        accuracy = evaluate.load("accuracy")
+        f1_metric = evaluate.load("f1")
+        precision = evaluate.load("precision")
+        recall = evaluate.load("recall")
+        print("f1: ", f1_metric)
+        
+        #results = f1_metric.compute(references=references, predictions=predictions, average=None)
+        #print(results) # das ist das, wo die Beispiele rauskommen
+        
+        #f_test = compute_metrics(f1_metric)
+        #print("f_test: ", f_test)
+        #print("f_test 1", f_test[1])
 
-    else:
+        
+    
+        #trial.report(f1, epoch)
+
+        # Handle pruning based on the intermediate value.
+        #if trial.should_prune():
+            #raise optuna.exceptions.TrialPruned()  
+
+        # error because f1 is not defined
+        #return f1
+    
+    study = optuna.create_study(
+        #study_name='hp_search_' + args.vuln_type,
+        direction="maximize",
+        storage='sqlite:///hp_search.db',
+        #load_if_exists=True
+        )
+    test = study.optimize(objective, n_trials=args.n_trials)
+    print("test: ", test)
+    print("Best trial:")
+    trial = study.best_trial
+
+    print(f"  Value: {trial.value}")
+    print("  Params: ")
+    for key, value in trial.params.items():
+        print(f"    {key}: {value}")
+
+    """else:
         print("\n  ==> Started fine-tuning")
         model = AutoModelForSequenceClassification.from_pretrained(
             args.load, 
@@ -261,7 +226,7 @@ def main(args):
         )
         print("\n 1. loaded model")
         print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
-        run_training(args=args, train_data=train_data, tokenizer=tokenizer, model=model)
+        run_training(args=args, train_data=train_data, tokenizer=tokenizer, model=model)"""
 
 
 if __name__ == "__main__": 
@@ -287,7 +252,7 @@ if __name__ == "__main__":
     parser.add_argument('--save-freq', default=500, type=int)       # default = 500 # commented out for gpu
 
     # Hyperparameter search
-    parser.add_argument('--hyperparameter-search', action='store_true')
+    #parser.add_argument('--hyperparameter-search', action='store_true')
     parser.add_argument('--n_trials', default=10, type=int)
    
 
