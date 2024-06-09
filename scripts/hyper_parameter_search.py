@@ -19,10 +19,7 @@ import numpy as np
 import optuna
 
 
-def run_training(args, train_data, tokenizer, trial=None):    
-    print("\n run training trial: ", trial)   
-    
-    start_time = time.time()
+def run_training(args, train_data, tokenizer, trial=None):  
 
     def model_init(trial):        
         id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}   
@@ -31,8 +28,7 @@ def run_training(args, train_data, tokenizer, trial=None):
         model = AutoModelForSequenceClassification.from_pretrained(args.load,
                                                         num_labels=2,
                                                         id2label=id2label,
-                                                        label2id=label2id).to(device)                                                      
-        print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
+                                                        label2id=label2id).to(device)                                                        
         return model 
 
 
@@ -101,16 +97,20 @@ def run_training(args, train_data, tokenizer, trial=None):
         # early_stopping_threshold: Use with TrainingArguments metric_for_best_model and early_stopping_patience to denote how much the specified metric must improve to satisfy early stopping conditions. 
         #callbacks=[EarlyStoppingCallback(early_stopping_patience=5, early_stopping_threshold=0.01)]        
 
-    )   
-    
+    )
+
+    start_time = time.time()
     print(f'\n  ==> Started trial {trial.number}')
+    
     best_trial = trainer.hyperparameter_search(                    
         direction="maximize",
         backend="optuna",
         n_trials=args.n_trials,
         hp_space=optuna_hp_space,
+        storage='sqlite:///hp_search.db',
         #compute_objective=compute_objective,
-    ) 
+    )
+    print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}") 
     print("\nBest trial:\n", best_trial)
 
     end_time = time.time()
@@ -144,18 +144,17 @@ def main(args):
         #return run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)  
         # return evaluation_score ist richtig 
         print("TEST f1 value ist das : ", xxx)
-        #results = trainer.evaluate(eval_dataset=finaltest_set)    
-        
+        #results = trainer.evaluate(eval_dataset=finaltest_set)  
 
-       
-        
-    
     study = optuna.create_study(
         #study_name='hp_search_' + args.vuln_type,
         direction="maximize",
         storage='sqlite:///hp_search.db',
         #load_if_exists=True
         )
+    
+
+
     test = study.optimize(objective, n_trials=args.n_trials)
     print("test: ", test)
     print("Best trial:")
