@@ -21,8 +21,8 @@ import optuna
 
 
 def run_training(args, train_data, tokenizer, model=None, trial=None):    
-    print("\n model: ", model)
-    print("\n trial: ", trial)
+    print("\n run training model: ", model)
+    print(" trial: ", trial)
     
     start_time = time.time() 
 
@@ -45,40 +45,33 @@ def run_training(args, train_data, tokenizer, model=None, trial=None):
     #learning_rate = trial.suggest_float("learning_rate", 1e-6, 1e-4, log=True) if trial else args.lr
     #per_device_train_batch_size = trial.suggest_int("per_device_train_batch_size", 16, 64, log=True) if trial else args.batch_size_per_replica
 
-    def optuna_hp_space(trial):
+    def optuna_hp_space(trial): # todo die alle überprüfen, wenn sie keinen Sinn machen zu testen, dann auch wieder zu args und default werte
         return {
             "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-4, log=True),
             "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size", [16, 32, 64, 128]),
             #"batch_size_per_replica": trial.suggest_categorical('batch_size_per_replica', [8, 16, 32]), 
-            #"grad_acc_steps": trial.suggest_int('grad_acc_steps', 1, 4)
-
-            # Meaning, I think: Set it in Training Args
-            #Trying to set batch_size_per_replica in the hyperparameter search but there is no corresponding field in `TrainingArguments`.
-            #Trying to set grad_acc_steps in the hyperparameter search but there is no corresponding field in `TrainingArguments`.
-
-        }
-
-   
-    print("2. if trial: ", trial)
-    hyperparameters = optuna_hp_space(trial)
-    learning_rate = hyperparameters["learning_rate"]
-    per_device_train_batch_size = hyperparameters["per_device_train_batch_size"]        
-    #grad_acc_steps = hyperparameters["grad_acc_steps"]         
+            "gradient_accumulation_steps": trial.suggest_int('gradient_accumulation_steps', 1, 4),    
+            "warmup_steps": trial.suggest_int('warmup_steps', 100, 200)        
+        }   
     
+           
+    hyperparameters = optuna_hp_space(trial)
 
-    training_args = TrainingArguments(      
-        report_to='tensorboard',
-        output_dir=args.save_dir,
-        overwrite_output_dir=False,
+    training_args = TrainingArguments(                
+        report_to='tensorboard',        
         do_train=True,
         save_strategy='epoch',        
         eval_strategy="epoch",
         num_train_epochs=args.epochs,
-        per_device_train_batch_size=args.batch_size_per_replica,
-        gradient_accumulation_steps=args.grad_acc_steps,
-        learning_rate=learning_rate, #commented out for hyper-param search
+        
+        learning_rate=hyperparameters["learning_rate"],
+        per_device_train_batch_size=hyperparameters["per_device_train_batch_size"],        
+        gradient_accumulation_steps=hyperparameters["gradient_accumulation_steps"],     
         weight_decay=0.05,
-        warmup_steps=args.lr_warmup_steps,
+        warmup_steps=hyperparameters["warmup_steps"],
+
+        output_dir=args.save_dir,
+        overwrite_output_dir=False,
         logging_dir=args.save_dir,
         logging_first_step=True,
         logging_steps=args.log_freq, # commented out for gpu
@@ -161,9 +154,8 @@ def main(args):
     
  
     
-    print("\n ==> Start hyper-parameter search")
-
-       
+    print("\n ==> Start hyper-parameter search")    
+    #run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)   
 
     def objective(trial):
         run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)            
@@ -181,6 +173,15 @@ def main(args):
         precision = evaluate.load("precision")
         recall = evaluate.load("recall")
         print("f1: ", f1_metric)
+
+        def compute_metrics(eval_pred):        
+            print("\n DDDcompute_metrics: ")
+            predictions, labels = eval_pred 
+            tuple_element_1 = np.asarray(predictions[0])
+            tuple_element_2 = np.asarray(predictions[1])
+            predictions = np.argmax(tuple_element_1, axis=1)
+            clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])    
+            return clf_metrics.compute(predictions=predictions, references=labels)
         
         #results = f1_metric.compute(references=references, predictions=predictions, average=None)
         #print(results) # das ist das, wo die Beispiele rauskommen
@@ -209,24 +210,12 @@ def main(args):
     test = study.optimize(objective, n_trials=args.n_trials)
     print("test: ", test)
     print("Best trial:")
-    trial = study.best_trial
+    #trial = study.best_trial
 
     print(f"  Value: {trial.value}")
     print("  Params: ")
     for key, value in trial.params.items():
-        print(f"    {key}: {value}")
-
-    """else:
-        print("\n  ==> Started fine-tuning")
-        model = AutoModelForSequenceClassification.from_pretrained(
-            args.load, 
-            num_labels=2,
-            id2label={0: "NOT VULNERABLE", 1: "VULNERABLE"},
-            label2id={"NOT VULNERABLE": 0, "VULNERABLE": 1}
-        )
-        print("\n 1. loaded model")
-        print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
-        run_training(args=args, train_data=train_data, tokenizer=tokenizer, model=model)"""
+        print(f"    {key}: {value}")    
 
 
 if __name__ == "__main__": 
@@ -236,12 +225,10 @@ if __name__ == "__main__":
     parser.add_argument('--cache-data', default='../cache_data', type=str)
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str) 
 
-    # Training
-    parser.add_argument('--epochs', default=10, type=int) # epochs
-    parser.add_argument('--lr', default=5e-5, type=float) # learning rate
-    parser.add_argument('--lr-warmup-steps', default=200, type=int) # learning rate
-    parser.add_argument('--batch-size-per-replica', default=1, type=int) # nicht dasselbe wie batch size, denke ich default=8    
-    parser.add_argument('--grad-acc-steps', default=4, type=int) # instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
+    # Hyperparameter search    
+    parser.add_argument('--n_trials', default=10, type=int)
+    parser.add_argument('--epochs', default=10, type=int)
+    parser.add_argument('--batch-size-per-replica', default=8, type=int) # nicht dasselbe wie batch size, denke ich default=8        
     parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
     parser.add_argument('--deepspeed', default=None, type=str) # intetration with deepspeed library
     parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration
@@ -249,12 +236,7 @@ if __name__ == "__main__":
     # Logging and stuff
     parser.add_argument('--save-dir', default="../hp_search/", type=str)
     parser.add_argument('--log-freq', default=10, type=int)# commented out for gpu
-    parser.add_argument('--save-freq', default=500, type=int)       # default = 500 # commented out for gpu
-
-    # Hyperparameter search
-    #parser.add_argument('--hyperparameter-search', action='store_true')
-    parser.add_argument('--n_trials', default=10, type=int)
-   
+    parser.add_argument('--save-freq', default=500, type=int)       # default = 500 # commented out for gpu   
 
     args = parser.parse_args()
     os.makedirs(args.save_dir, exist_ok=True)
