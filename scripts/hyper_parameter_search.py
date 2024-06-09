@@ -19,17 +19,27 @@ import numpy as np
 import optuna
 
 
-def run_training(args, train_data, tokenizer, model=None, trial=None):    
-    print("\n run training model: ", model)
-    print(" trial: ", trial)
+def run_training(args, train_data, tokenizer, trial=None):    
+    print("\n run training trial: ", trial)   
     
-    start_time = time.time() 
+    start_time = time.time()
+
+    def model_init(trial):        
+        id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}   
+        label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}    
+        device = "cpu"  # "cuda" for gpu       
+        model = AutoModelForSequenceClassification.from_pretrained(args.load,
+                                                        num_labels=2,
+                                                        id2label=id2label,
+                                                        label2id=label2id).to(device)                                                      
+        print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
+        return model 
+
 
     accuracy = evaluate.load("accuracy")
     f1 = evaluate.load("f1")
     precision = evaluate.load("precision")
-    recall = evaluate.load("recall")    
-
+    recall = evaluate.load("recall")
 
     def compute_metrics(eval_pred):        
         print("\n CCCCcompute_metrics: ")
@@ -40,21 +50,15 @@ def run_training(args, train_data, tokenizer, model=None, trial=None):
         clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])    
         return clf_metrics.compute(predictions=predictions, references=labels)
 
-    # Set up training arguments with hyperparameters from Optuna trial if available
-    #learning_rate = trial.suggest_float("learning_rate", 1e-6, 1e-4, log=True) if trial else args.lr
-    #per_device_train_batch_size = trial.suggest_int("per_device_train_batch_size", 16, 64, log=True) if trial else args.batch_size_per_replica
-
-    def optuna_hp_space(trial): # todo die alle überprüfen, wenn sie keinen Sinn machen zu testen, dann auch wieder zu args und default werte
+    # todo die alle überprüfen, wenn sie keinen Sinn machen zu testen, dann auch wieder zu args und default werte
+    def optuna_hp_space(trial):
         return {
             "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-4, log=True),
             "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size", [16, 32, 64, 128]),
             #"batch_size_per_replica": trial.suggest_categorical('batch_size_per_replica', [8, 16, 32]), 
             "gradient_accumulation_steps": trial.suggest_int('gradient_accumulation_steps', 1, 4),    
             "warmup_steps": trial.suggest_int('warmup_steps', 100, 200)        
-        }   
-    
-           
-    #hyperparameters = optuna_hp_space(trial)
+        }  
 
     training_args = TrainingArguments(                
         report_to='tensorboard',        
@@ -83,21 +87,7 @@ def run_training(args, train_data, tokenizer, model=None, trial=None):
         deepspeed=args.deepspeed,
         fp16=args.fp16,
         push_to_hub=False,        
-        )      
-
-    def model_init(trial):
-        print("\n model_init trial: ", trial)
-        id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}   
-        label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}    
-        device = "cpu"  # "cuda" for gpu       
-        model = AutoModelForSequenceClassification.from_pretrained(args.load,
-                                                        num_labels=2,
-                                                        id2label=id2label,
-                                                        label2id=label2id).to(device)
-        print("\n2. loaded model")                                                
-        print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
-        return model
-
+        )  
 
     trainer = Trainer(
         model = None,
@@ -111,28 +101,23 @@ def run_training(args, train_data, tokenizer, model=None, trial=None):
         # early_stopping_threshold: Use with TrainingArguments metric_for_best_model and early_stopping_patience to denote how much the specified metric must improve to satisfy early stopping conditions. 
         #callbacks=[EarlyStoppingCallback(early_stopping_patience=5, early_stopping_threshold=0.01)]        
 
-    )
-
+    )   
     
-    print("\n if trial: ", trial)
     print(f'\n  ==> Started trial {trial.number}')
-    
-    best_trial = trainer.hyperparameter_search(
-                    
+    best_trial = trainer.hyperparameter_search(                    
         direction="maximize",
         backend="optuna",
         n_trials=args.n_trials,
         hp_space=optuna_hp_space,
         #compute_objective=compute_objective,
-    )
+    ) 
+    print("\nBest trial:\n", best_trial)
 
- 
-    print("\nBest_trial:\n", best_trial)
     end_time = time.time()
-    time_elapsed = end_time - start_time
+    time_elapsed = end_time - start_time    
     print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
-        
     
+    return trainer.evaluate()['eval_f1']
 
 def main(args): 
     argsdict = vars(args) 
@@ -143,62 +128,26 @@ def main(args):
         
     tokenizer = AutoTokenizer.from_pretrained(args.load)
     train_data = load_tokenize_data(args, tokenizer=tokenizer) 
-    print("train_data:\n ", train_data)
+    print("train_data:\n", train_data)
     
     # For training a smaller sample, if args != -1 is given
     if args.data_num != -1:             
         train_data['train'] = [train_data['train'][i]for i in range(math.ceil(args.data_num * 70 /100))]        
         train_data['validation'] = [train_data['validation'][i]for i in range(math.ceil(args.data_num * 15 / 100))]
-        train_data['test'] = [train_data['test'][i]for i in range(math.ceil(args.data_num * 15 / 100))]       
+        train_data['test'] = [train_data['test'][i]for i in range(math.ceil(args.data_num * 15 / 100))]   
     
- 
-    
-    print("\n ==> Start hyper-parameter search")    
-    #run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)   
 
     def objective(trial):
-        run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)            
+        xxx = run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)            
         # You could define your own compute_objective function, if not defined, the default compute_objective will be called,
         # and the sum of eval metric like f1 is returned as objective value.
         #return run_training(args=args, train_data=train_data, tokenizer=tokenizer, trial=trial)  
         # return evaluation_score ist richtig 
-        
-        #results = trainer.evaluate(eval_dataset=finaltest_set)     
-        
+        print("TEST f1 value ist das : ", xxx)
+        #results = trainer.evaluate(eval_dataset=finaltest_set)    
         
 
-        accuracy = evaluate.load("accuracy")
-        f1_metric = evaluate.load("f1")
-        precision = evaluate.load("precision")
-        recall = evaluate.load("recall")
-        print("f1: ", f1_metric)
-
-        def compute_metrics(eval_pred):        
-            print("\n DDDcompute_metrics: ")
-            predictions, labels = eval_pred 
-            tuple_element_1 = np.asarray(predictions[0])
-            tuple_element_2 = np.asarray(predictions[1])
-            predictions = np.argmax(tuple_element_1, axis=1)
-            clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])    
-            return clf_metrics.compute(predictions=predictions, references=labels)
-        
-        #results = f1_metric.compute(references=references, predictions=predictions, average=None)
-        #print(results) # das ist das, wo die Beispiele rauskommen
-        
-        #f_test = compute_metrics(f1_metric)
-        #print("f_test: ", f_test)
-        #print("f_test 1", f_test[1])
-
-        
-    
-        #trial.report(f1, epoch)
-
-        # Handle pruning based on the intermediate value.
-        #if trial.should_prune():
-            #raise optuna.exceptions.TrialPruned()  
-
-        # error because f1 is not defined
-        #return f1
+       
         
     
     study = optuna.create_study(
