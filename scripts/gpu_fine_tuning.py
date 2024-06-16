@@ -1,4 +1,5 @@
 import os
+#os.environ["DS_SKIP_CUDA_CHECK"] = "1" #because of BUG: https://github.com/microsoft/DeepSpeed/issues/3223
 import time
 import math
 import pprint
@@ -6,17 +7,46 @@ import argparse
 from datasets import load_dataset, load_from_disk
 from transformers import (AutoTokenizer,
                         TrainingArguments,
-                        Trainer, 
+                        Trainer,                          
+                        pipeline,
+                        DataCollatorWithPadding,
                         AutoModelForSequenceClassification,
+                        logging
                         )
+from pynvml import *
+#import deepspeed
+#from transformers.integrations import HfDeepSpeedConfig
+#from accelerate import Accelerator
 import json
 import evaluate
 import torch
 import numpy as np
+#import optuna
+from mpi4py import MPI
+#os.environ['DS_SKIP_CUDA_CHECK']="1"
+
+logging.set_verbosity_error()
+
+def print_gpu_utilization():
+    nvmlInit()
+    handle = nvmlDeviceGetHandleByIndex(0)
+    info = nvmlDeviceGetMemoryInfo(handle)
+    print(f"XXX GPU memory occupied: {info.used//1024**2} MB.")
+
+
+def print_summary(result):
+    print(f"XXX Time: {result.metrics['train_runtime']:.2f}")
+    print(f"XXX Samples/second: {result.metrics['train_samples_per_second']:.2f}")
+    print_gpu_utilization()
+
+
+
 
 
 def run_training(args, model, train_data, tokenizer):    
     
+
+    print_gpu_utilization()
     start_time = time.time() 
 
     accuracy = evaluate.load("accuracy")
@@ -32,40 +62,40 @@ def run_training(args, model, train_data, tokenizer):
         predictions = np.argmax(tuple_element_1, axis=1)
         clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])    
         return clf_metrics.compute(predictions=predictions, references=labels)
+    
+    # Load DeepSpeed configuration
+    #ds_config_file = '../deepspeed_config.json'
+    #hf_deepspeed_config = HfDeepSpeedConfig(ds_config_file)
 
 
-    training_args = TrainingArguments(
-      
+    training_args = TrainingArguments(      
         report_to='tensorboard',
         output_dir=args.save_dir,
         overwrite_output_dir=False,
-
         do_train=True,
-        save_strategy='epoch',
-        #save_strategy="no", #neu
-        eval_strategy="epoch",        
-
+        save_strategy='epoch',        
+        eval_strategy="epoch",  
         num_train_epochs=args.epochs,
+        #per_device_eval_batch_size=1, 
         per_device_train_batch_size=args.batch_size_per_replica,
         gradient_accumulation_steps=args.grad_acc_steps,
-
         learning_rate=args.lr,
         weight_decay=0.05,
         warmup_steps=args.lr_warmup_steps,
-
         logging_dir=args.save_dir,
         logging_first_step=True,
-        logging_steps=args.log_freq,
+        logging_steps=args.log_freq, 
         save_total_limit=1,
-
         dataloader_drop_last=True,
         dataloader_num_workers=4,
-
         local_rank=args.local_rank,
+        #deepspeed=ds_config_file,
         deepspeed=args.deepspeed,
         fp16=args.fp16,
         push_to_hub=False, 
-        load_best_model_at_end=True, 
+        metric_for_best_model="f1", #new
+        load_best_model_at_end=True, #added later by me        
+
     )
 
     trainer = Trainer(
@@ -76,26 +106,33 @@ def run_training(args, model, train_data, tokenizer):
         tokenizer=tokenizer,        
         compute_metrics=compute_metrics,       
 
-    )   
-   
-    trainer.train()
-    trainer.save_model() 
+    ) 
 
-   
+    allocated_memory = torch.cuda.memory_allocated()
+    print(f"\n  Current GPU memory allocated: {allocated_memory / 1024**3:.2f} GB")  # Convert bytes to GB for readability
+    memory_reserved = torch.cuda.memory_reserved()
+    print(f"  GPU memory reserved: {memory_reserved / 1024**3:.2f} GB\n")
 
+    print_gpu_utilization()
+   
+    result = trainer.train()
+    print_summary(result)
+    
+    
+
+    trainer.save_model() # added by me later: worked with cpu, sql mit 'data_num': 5000 samples
+    
     # Evaluate the model on the test dataset   
     finaltest_set = train_data['test']
-
     results = trainer.evaluate(eval_dataset=finaltest_set)  
     prediction = trainer.predict(test_dataset=finaltest_set)
     print("results: ", results)
     print("prediction: ", prediction)
 
-    if args.local_rank in [0, -1]:
-        final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint") #alt
-        #final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint", "model.pt") # test: no
+    if args.local_rank in [0, -1]: 
+        final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint")         
         model.save_pretrained(final_checkpoint_dir)
-        print(f'  ==> Finish training and save to {final_checkpoint_dir}')
+        print(f'  ==> Finish training and save to {final_checkpoint_dir}')        
     
     
     end_time = time.time()
@@ -119,34 +156,26 @@ def load_tokenize_data(args, tokenizer):
 
 
         data_files = {"train": file_path + training_set, "validation": file_path + validation_set, "test": file_path + test_set}
-        datasets = load_dataset("json", data_files=data_files)    
-
-
-        
+        datasets = load_dataset("json", data_files=data_files)           
 
         #data_collator = DataCollatorWithPadding(tokenizer=tokenizer) #neu
 
         def preprocess_function(examples):         
                  
-            return tokenizer(examples["code"], truncation=True, max_length=tokenizer.model_max_length, padding='max_length')
-      
+            #return tokenizer(examples["code"], truncation=True, max_length=tokenizer.model_max_length, padding='max_length')
+            return tokenizer(examples["code"], truncation=True, padding=True) #padding: True = pad to the longest sequence in the batch
+                                                                              #truncation: True = truncate to the maximum length accepted by the model if no max_length is provided                                                                                                                                              
         train_data = datasets.map(
             preprocess_function,
             #data_collator, #neu
             batched=True,            
-            num_proc=64,           
+            num_proc=16,           
         )    
 
         train_data = train_data.remove_columns(["snippet_id"])
         train_data = train_data.rename_column("label", "labels")
         train_data.set_format("torch")
-        print("train_data: ", train_data)   
-
-        
-       
-
-
-        
+        #print("train_data: ", train_data)         
 
         print(f'\n  ==> Tokenized {len(train_data)} samples')        
         train_data.save_to_disk(args.cache_data)
@@ -155,15 +184,20 @@ def load_tokenize_data(args, tokenizer):
 
 
 def main(args): 
+    
     argsdict = vars(args) 
     #print("Arguments:\n", pprint.pformat(argsdict))
-   
+    
     with open(os.path.join(args.save_dir, "command.txt"), 'w') as f:
-        f.write(pprint.pformat(argsdict)) 
-        
-    tokenizer = AutoTokenizer.from_pretrained(args.load) 
+        f.write(pprint.pformat(argsdict))
+ 
+    #tokenizer_max_len = 512                                        # mit order ohne das hat keine Auswirkung auf speed
+    #tokenizer_config = {'max_len': tokenizer_max_len}    
+    tokenizer = AutoTokenizer.from_pretrained(args.load) #, **tokenizer_config)
+    print("tokenizer: ", tokenizer)
 
     train_data = load_tokenize_data(args, tokenizer=tokenizer)  
+    #print("train_data: ", train_data)
 
     # Check if an argument to test a smaller sample of data was given
     if args.data_num != -1:             
@@ -173,12 +207,16 @@ def main(args):
     
  
     id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}   
-    label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}    
-    model = AutoModelForSequenceClassification.from_pretrained(args.load, 
+    label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1} 
+    #accelerator = Accelerator()
+    #device = accelerator.device
+    device = "cuda" # "cuda" for GPU usage or "cpu" for CPU usage     
+    model = AutoModelForSequenceClassification.from_pretrained(args.load, #full xss heute nur 147 und sql nur 149 Stunden???
                                                         num_labels=2,
                                                         id2label=id2label,
-                                                        label2id=label2id)
-                                                              
+                                                        label2id=label2id).to(device)
+    
+                                                         
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
 
     run_training(args, model, train_data, tokenizer=tokenizer)
@@ -188,23 +226,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CodeT5+ finetuning on sequence classification task")
     parser.add_argument('--vuln-type', default="sql", type=str)  
     parser.add_argument('--data-num', default=-1, type=int)  
-    parser.add_argument('--cache-data', default='cache_data/', type=str)
+    parser.add_argument('--cache-data', default='../cache_data', type=str)
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str) 
 
     # Training
     parser.add_argument('--epochs', default=10, type=int) # epochs
     parser.add_argument('--lr', default=5e-5, type=float) # learning rate
     parser.add_argument('--lr-warmup-steps', default=200, type=int) # learning rate
-    parser.add_argument('--batch-size-per-replica', default=8, type=int) # nicht dasselbe wie batch size, denke ich    
+    parser.add_argument('--batch-size-per-replica', default=1, type=int) # nicht dasselbe wie batch size, denke ich default=8
     parser.add_argument('--grad-acc-steps', default=4, type=int) # instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
     parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
-    parser.add_argument('--deepspeed', default=None, type=str) # intetration with deepspeed library
-    parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration
+    parser.add_argument('--deepspeed', default=None, type=str) # interacion with deepspeed library default = None, ("deepspeed_config.json",)
+    parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration default = False
 
     # Logging and stuff
-    parser.add_argument('--save-dir', default="saved_models/summarize_python", type=str)
-    parser.add_argument('--log-freq', default=10, type=int)
-    parser.add_argument('--save-freq', default=500, type=int)
+    parser.add_argument('--save-dir', default="../saved_models/", type=str)
+    parser.add_argument('--log-freq', default=10, type=int) #commented out for gpu
+    parser.add_argument('--save-freq', default=500, type=int)       # default = 500   #commented out for gpu
 
     args = parser.parse_args()
     os.makedirs(args.save_dir, exist_ok=True)
