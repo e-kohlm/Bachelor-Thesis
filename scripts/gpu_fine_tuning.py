@@ -14,6 +14,7 @@ from transformers import (AutoTokenizer,
                         logging
                         )
 from pynvml import *
+from pynvml.smi import nvidia_smi
 #import deepspeed
 #from transformers.integrations import HfDeepSpeedConfig
 #from accelerate import Accelerator
@@ -29,14 +30,27 @@ logging.set_verbosity_error()
 
 def print_gpu_utilization():
     nvmlInit()
+    print("Driver Version:", nvmlSystemGetDriverVersion())
+    deviceCount = nvmlDeviceGetCount()
+    
+    for i in range(deviceCount):
+        handle = nvmlDeviceGetHandleByIndex(i)
+        print("Device", i, ":", nvmlDeviceGetName(handle))
+
     handle = nvmlDeviceGetHandleByIndex(0)
     info = nvmlDeviceGetMemoryInfo(handle)
-    print(f"XXX GPU memory occupied: {info.used//1024**2} MB.")
+    print(f"  GPU memory occupied: {info.used//1024**2} MB.")
+    memory_reserved = torch.cuda.memory_reserved()
+    print(f"GPU memory reserved: {memory_reserved / 1024**3:.2f} GB")
+
+    nvsmi = nvidia_smi.getInstance()
+    device_query = nvsmi.DeviceQuery('memory.free, memory.total')
+    print(f" Device query:{device_query}")
 
 
 def print_summary(result):
-    print(f"XXX Time: {result.metrics['train_runtime']:.2f}")
-    print(f"XXX Samples/second: {result.metrics['train_samples_per_second']:.2f}")
+    print(f"Time: {result.metrics['train_runtime']:.2f}")
+    print(f"Samples/second: {result.metrics['train_samples_per_second']:.2f}")
     print_gpu_utilization()
 
 
@@ -72,29 +86,34 @@ def run_training(args, model, train_data, tokenizer):
         report_to='tensorboard',
         output_dir=args.save_dir,
         overwrite_output_dir=False,
+
         do_train=True,
         save_strategy='epoch',        
         eval_strategy="epoch",  
+        metric_for_best_model="f1", 
+        load_best_model_at_end=True,
+        save_total_limit=2, 
+
         num_train_epochs=args.epochs,
         #per_device_eval_batch_size=1, 
         per_device_train_batch_size=args.batch_size_per_replica,
         gradient_accumulation_steps=args.grad_acc_steps,
         learning_rate=args.lr,
-        weight_decay=0.05,
+        weight_decay=0.05, #CodeT5+ default=0.05
         warmup_steps=args.lr_warmup_steps,
+        
         logging_dir=args.save_dir,
         logging_first_step=True,
         logging_steps=args.log_freq, 
-        save_total_limit=1,
-        dataloader_drop_last=True,
-        dataloader_num_workers=4,
-        local_rank=args.local_rank,
+        
+        dataloader_drop_last=True, #CodeT5+ default=True
+        dataloader_num_workers=1, #CodeT5+ default=4, gruenau2: 3
+        local_rank=args.local_rank, # args.local_rank ist default
         #deepspeed=ds_config_file,
-        deepspeed=args.deepspeed,
-        fp16=args.fp16,
-        push_to_hub=False, 
-        metric_for_best_model="f1", #new
-        load_best_model_at_end=True, #added later by me        
+        deepspeed=args.deepspeed, # args.deepspeed ist default
+        fp16=args.fp16,             # args.fp16 ist default
+        #push_to_hub=False, 
+        
 
     )
 
@@ -113,7 +132,7 @@ def run_training(args, model, train_data, tokenizer):
     memory_reserved = torch.cuda.memory_reserved()
     print(f"  GPU memory reserved: {memory_reserved / 1024**3:.2f} GB\n")
 
-    print_gpu_utilization()
+    #print_gpu_utilization()
    
     result = trainer.train()
     print_summary(result)
@@ -197,7 +216,7 @@ def main(args):
     print("tokenizer: ", tokenizer)
 
     train_data = load_tokenize_data(args, tokenizer=tokenizer)  
-    #print("train_data: ", train_data)
+    print("train_data: ", train_data)
 
     # Check if an argument to test a smaller sample of data was given
     if args.data_num != -1:             
@@ -210,7 +229,15 @@ def main(args):
     label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1} 
     #accelerator = Accelerator()
     #device = accelerator.device
-    device = "cuda" # "cuda" for GPU usage or "cpu" for CPU usage     
+
+
+    
+    device = torch.device("cuda:1")
+
+
+
+
+    #device = "cuda" # "cuda" for GPU usage or "cpu" for CPU usage     
     model = AutoModelForSequenceClassification.from_pretrained(args.load, #full xss heute nur 147 und sql nur 149 Stunden???
                                                         num_labels=2,
                                                         id2label=id2label,
@@ -233,16 +260,16 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', default=10, type=int) # epochs
     parser.add_argument('--lr', default=5e-5, type=float) # learning rate
     parser.add_argument('--lr-warmup-steps', default=200, type=int) # learning rate
-    parser.add_argument('--batch-size-per-replica', default=1, type=int) # nicht dasselbe wie batch size, denke ich default=8
-    parser.add_argument('--grad-acc-steps', default=4, type=int) # instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
-    parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
+    parser.add_argument('--batch-size-per-replica', default=1, type=int) # default=8, nicht dasselbe wie batch size, denke ich 
+    parser.add_argument('--grad-acc-steps', default=4, type=int) # default=4, instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
+    parser.add_argument('--local_rank', default=-1, type=int) # default=-1, irgendwas mit distributed training
     parser.add_argument('--deepspeed', default=None, type=str) # interacion with deepspeed library default = None, ("deepspeed_config.json",)
-    parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration default = False
+    parser.add_argument('--fp16', default=False, action='store_true') # default=False, action='store_true', with mixed precision for training acceleration
 
     # Logging and stuff
     parser.add_argument('--save-dir', default="../saved_models/", type=str)
-    parser.add_argument('--log-freq', default=10, type=int) #commented out for gpu
-    parser.add_argument('--save-freq', default=500, type=int)       # default = 500   #commented out for gpu
+    parser.add_argument('--log-freq', default=10, type=int) #default=10
+    parser.add_argument('--save-freq', default=500, type=int) # default=500 
 
     args = parser.parse_args()
     os.makedirs(args.save_dir, exist_ok=True)

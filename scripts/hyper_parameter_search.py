@@ -1,35 +1,39 @@
 import os
+import sys
 import time
 import math
 import pprint
 import argparse
-from fine_tuning import load_tokenize_data
+from gpu_fine_tuning import load_tokenize_data
 from datasets import load_dataset, load_from_disk
 from transformers import (
                         AutoTokenizer,
                         TrainingArguments,
                         Trainer, 
-                        AutoModelForSequenceClassification,
-                        EarlyStoppingCallback
+                        AutoModelForSequenceClassification                        
                         )
 import json
 import evaluate
 import torch
 import numpy as np
 import optuna
+import logging
+#from mpi4py import MPI
+#os.environ['CUDA_LAUNCH_BLOCKING']="1"
 
 
 def optuna_hp_space(trial):
-        return {
-            "learning_rate": trial.suggest_loguniform("learning_rate", 1e-5, 5e-4),
-            "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size", [8, 16, 32, 64, 128]),            
-            "gradient_accumulation_steps": trial.suggest_int('gradient_accumulation_steps', 1, 4),    
-            "warmup_steps": trial.suggest_int('warmup_steps', 100, 500),
-            "epochs": trial.suggest_int('epochs', 1, 10),   
-            "weight_decay": trial.suggest_loguniform("weight_decay", 0.05, 0.3),     
-            #"dropout_rate": trial.suggest_uniform("dropout_rate", 0.05, 0.5, , log=True) # is a model parameter
-            #"optimizer": trial.suggest_categorical("optimizer", ["adamw", "adam", "sgd", "adagrad"]),            
-        } 
+    print("trial optuna_hp_space: ", trial)
+    return {
+        "learning_rate": trial.suggest_float("learning_rate", 1e-5, 5e-4, log=True),
+        "batch-size-per-replica": trial.suggest_categorical("per_device_train_batch_size", [8, 16, 32]),            
+        "gradient_accumulation_steps": trial.suggest_int('gradient_accumulation_steps', 1, 4),    
+        "warmup_steps": trial.suggest_int('warmup_steps', 100, 500),
+        "epochs": trial.suggest_int('epochs', 1, 10),   
+        "weight_decay": trial.suggest_float("weight_decay", 1e-8, 0.1),    # kein model-parameter, prevents over or underfitting
+        #"dropout_rate": trial.suggest_uniform("dropout_rate", 0.05, 0.5, , log=True) # is a model parameter
+        #"optimizer": trial.suggest_categorical("optimizer", ["adamw", "adam", "sgd", "adagrad"]),            
+    } 
 
 accuracy = evaluate.load("accuracy")
 f1 = evaluate.load("f1")
@@ -45,6 +49,7 @@ def compute_metrics(eval_pred):
     return clf_metrics.compute(predictions=predictions, references=labels) 
 
 def objective(trial, train_data, tokenizer, args):
+    print("trial objective: ", trial)
     print(f'\n  ==> Started trial {trial.number}')  
 
     def model_init(trial):        
@@ -59,27 +64,28 @@ def objective(trial, train_data, tokenizer, args):
         return model
 
     training_args = TrainingArguments(                
-        report_to='tensorboard',        
-        do_train=True,
-        save_strategy='epoch',        
-        eval_strategy="epoch",
+        report_to='tensorboard', 
+        output_dir=args.save_dir,
+        overwrite_output_dir=False,       
         
+        #do_train=True,
+        save_strategy='epoch',        
+        eval_strategy="epoch",        
         metric_for_best_model="f1",
         load_best_model_at_end=True, 
+        save_total_limit=1, 
         
         num_train_epochs=optuna_hp_space(trial)["epochs"],
+        per_device_train_batch_size=optuna_hp_space(trial)["batch-size-per-replica"],        
+        gradient_accumulation_steps=optuna_hp_space(trial)["gradient_accumulation_steps"],             
         learning_rate=optuna_hp_space(trial)["learning_rate"],
-        per_device_train_batch_size=optuna_hp_space(trial)["per_device_train_batch_size"],        
-        gradient_accumulation_steps=optuna_hp_space(trial)["gradient_accumulation_steps"],     
-        weight_decay=optuna_hp_space(trial)["weight_decay"],     
-        warmup_steps=optuna_hp_space(trial)["warmup_steps"],        
-
-        output_dir=args.save_dir,
-        overwrite_output_dir=False,
+        weight_decay=optuna_hp_space(trial)["weight_decay"], # model parameter default CodeT5+ = 0.05
+        warmup_steps=optuna_hp_space(trial)["warmup_steps"],               
+   
         logging_dir=args.save_dir,
         logging_first_step=True,
-        logging_steps=args.log_freq, # commented out for gpu
-        save_total_limit=1, # commented out for gpu
+        logging_steps=args.log_freq, 
+        
         dataloader_drop_last=True,
         dataloader_num_workers=4,
         local_rank=args.local_rank,
@@ -95,7 +101,7 @@ def objective(trial, train_data, tokenizer, args):
         tokenizer=tokenizer,        
         compute_metrics=compute_metrics,    
         model_init=model_init
-    )
+    )  
 
     # Train the model
     trainer.train()    
@@ -124,15 +130,25 @@ def main(args):
         train_data['test'] = [train_data['test'][i]for i in range(math.ceil(args.data_num * 15 / 100))] 
         
     start_time = time.time()
+    def wrapped_objective(trial):
+        print("trial wrapped_objective: ", trial)
+        return objective(trial, train_data=train_data, tokenizer=tokenizer, args=args)
     
+    #optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
     study = optuna.create_study(
         direction="maximize",
-        storage='sqlite:///../hp_search/hp_search.db',        
-        #load_if_exists=True
+        storage='sqlite:///../hp_search/hp_search.db',      
+        #compute_objective=wrapped_objective,
+        #sampler=optuna.samplers.RandomSampler(),
+        #pruner=optuna.pruners.MedianPruner(),
+        #load_if_exists=True        
     )
+    print("study: ", study)
+    #print("study.name: ", study.name)
+    print("rapped_obj: ", wrapped_objective)
 
-    def wrapped_objective(trial):
-        return objective(trial, train_data=train_data, tokenizer=tokenizer, args=args)
+
+    
 
     # Run optimization   
     study.optimize(wrapped_objective, n_trials=args.n_trials) 
@@ -140,11 +156,23 @@ def main(args):
 
     # Retrieve best trial
     best_trial = study.best_trial
-    print("\nBest trial: \n", best_trial.params)
+    #print("\nBest trial: \n", best_trial.params)
+    print(f"  Value: {best_trial.value}")
+    print("  Params: ")
+    for key, value in best_trial.params.items():
+        print(f"    {key}: {value}")   
 
     end_time = time.time()
     time_elapsed = end_time - start_time    
     print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
+
+# Optionally, load the best model and re-train or evaluate further
+#best_params = best_trial.params
+#model_name = 'Salesforce/codet5p-220m'
+#model = T5ForSequenceClassification.from_pretrained(model_name, num_labels=2)
+#tokenizer = T5Tokenizer.from_pretrained(model_name)
+#train_dataset, eval_dataset = load_my_data()
+
 
 
 if __name__ == "__main__": 
@@ -157,8 +185,7 @@ if __name__ == "__main__":
     # Hyperparameter search    
     parser.add_argument('--n_trials', default=10, type=int)    
 
-    # Speeding up stuff    
-    parser.add_argument('--batch-size-per-replica', default=8, type=int) # nicht dasselbe wie batch size, denke ich default=8        
+    # Speeding up          
     parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
     parser.add_argument('--deepspeed', default=None, type=str) # intetration with deepspeed library
     parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration
