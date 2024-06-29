@@ -7,58 +7,9 @@ import os
 import argparse
 import math
 import pprint
-#from datasets import load_dataset
 from load_tokenize_data import load_tokenize_data
 import numpy as np
 import evaluate
-#from optuna import Trial
-
-#save_dir = "../new_hp_search/"
-#os.makedirs(save_dir, exist_ok=True)
-
-
-"""def load_tokenize_data(tokenizer):   
-    
-    
-    # Load data
-   
-    file_path = "../VUDENC_data/"
-    training_set = "EXAMPLE_sql_dataset-TRAINING"
-    validation_set = "EXAMPLE_sql_dataset-VALIDATION"
-    test_set = "EXAMPLE_sql_dataset-TESTING"
-
-
-    data_files = {"train": file_path + training_set, "validation": file_path + validation_set, "test": file_path + test_set}
-    datasets = load_dataset("json", data_files=data_files)           
-
-    #data_collator = DataCollatorWithPadding(tokenizer=tokenizer) #neu
-
-    def preprocess_function(examples):         
-                
-        #return tokenizer(examples["code"], truncation=True, max_length=tokenizer.model_max_length, padding='max_length')
-        return tokenizer(examples["code"], truncation=True, padding=True) #padding: True = pad to the longest sequence in the batch
-                                                                            #truncation: True = truncate to the maximum length accepted by the model if no max_length is provided                                                                                                                                              
-    train_data = datasets.map(
-        preprocess_function,
-        #data_collator, #neu
-        batched=True,            
-        #num_proc=16,           
-    )    
-
-    train_data = train_data.remove_columns(["snippet_id"])
-    train_data = train_data.rename_column("label", "labels")
-    train_data.set_format("torch")
-    #print("train_data: ", train_data)         
-
-    print(f'\n  ==> Tokenized {len(train_data)} samples')      
-    
-    return train_data"""
-
-
-
-
-
-
 
 
 def run_search(args, train_data, tokenizer):
@@ -88,21 +39,12 @@ def run_search(args, train_data, tokenizer):
         return model
 
 
-    def compute_objective(metrics): #neu, wg. Problem
-        #print("\n metrics: ", metrics)
-        # Your elaborate computation here
+    def compute_objective(metrics): #neu, wg. Problem        
         eval_result = trainer.evaluate()
         print("\n objective eval_result['eval_f1']", eval_result['eval_f1'] )
-        return eval_result['eval_f1']   
-        #return result_to_optimize
+        return eval_result['eval_f1']          
 
-    def compute_metrics(eval_pred):  
-        #print("\n eval_pred: ", eval_pred)
-        #accuracy = eval.load("accuracy")
-        #f1 = eval.load("f1")
-        #precision = eval.load("precision")
-        #recall = eval.load("recall")
-
+    def compute_metrics(eval_pred): 
         predictions, labels = eval_pred 
         tuple_element_1 = np.asarray(predictions[0])
         tuple_element_2 = np.asarray(predictions[1])
@@ -112,7 +54,7 @@ def run_search(args, train_data, tokenizer):
         return clf_metrics.compute(predictions=predictions, references=labels) 
         #return metric.compute(predictions=predictions, references=labels) #neu, ich bekomme also nur f1 zurück
 
-    #A function that defines the hyperparameter search space => in Thesis übernehmen
+    # A function that defines the hyperparameter search space => in Thesis übernehmen
     def optuna_hp_space(trial):
         print(f'\n  ==> Started trial {trial.number}') 
         return {
@@ -134,8 +76,7 @@ def run_search(args, train_data, tokenizer):
             "optim": trial.suggest_categorical("optim", ["adamw_torch"]), # default ist adamW
             "epochs": trial.suggest_int('epochs',10), 
             "weight_decay": trial.suggest_float("weight_decay", 0.1, log=True),           
-        }
-        
+        }        
 
     training_args = TrainingArguments(         
         output_dir=args.save_dir,
