@@ -4,12 +4,15 @@ from transformers import (AutoTokenizer,
                           AutoModelForSequenceClassification,
                           EarlyStoppingCallback)
 import os
+import time
 import argparse
 import math
 import pprint
 from load_tokenize_data import load_tokenize_data
 import numpy as np
 import evaluate
+import optuna
+
 
 
 def run_search(args, train_data, tokenizer):
@@ -21,25 +24,20 @@ def run_search(args, train_data, tokenizer):
         label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}           
         # todo: model is hardcoded, because model_init allows max. one argument 
         model_name = 'Salesforce/codet5p-220m' 
-        model = AutoModelForSequenceClassification.from_pretrained(model_name,  
+        """model = AutoModelForSequenceClassification.from_pretrained(model_name,  
                                                             num_labels=2,
                                                             id2label=id2label,
-                                                            label2id=label2id,   
+                                                            label2id=label2id),  """ 
         # Probieren:
-        #device = "cpu" # "cuda" for GPU usage or "cpu" for CPU usage     
-        """model = AutoModelForSequenceClassification.from_pretrained(model_name,
+        device = "cpu" # "cuda" for GPU usage or "cpu" for CPU usage     
+        model = AutoModelForSequenceClassification.from_pretrained(model_name,
                                                         num_labels=2,
                                                         id2label=id2label,
-                                                        label2id=label2id).to(device)"""
-
-
-
-        )
+                                                        label2id=label2id).to(device)        
         print(f"\n  ==> Loaded model from {model_name}, model size {model.num_parameters()}")  
         return model
 
-
-    def compute_objective(metrics): #neu, wg. Problem        
+    def compute_objective(metrics): 
         eval_result = trainer.evaluate()
         print("\n objective eval_result['eval_f1']", eval_result['eval_f1'] )
         return eval_result['eval_f1']          
@@ -71,11 +69,11 @@ def run_search(args, train_data, tokenizer):
     def baseline_hp_space(trial):
         print(f'\n  ==> Started trial {trial.number}') 
         return {
-            "learning_rate": trial.suggest_float("learning_rate", 2e-5, log=True),         
+            "learning_rate": trial.suggest_float("learning_rate", 2e-5, 2e-5, log=True),         
             "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size", [32]),
             "optim": trial.suggest_categorical("optim", ["adamw_torch"]), # default ist adamW
-            "epochs": trial.suggest_int('epochs',10), 
-            "weight_decay": trial.suggest_float("weight_decay", 0.1, log=True),           
+            "num_train_epochs": trial.suggest_int('epochs',10, 10), 
+            "weight_decay": trial.suggest_float("weight_decay", 0.1, 0.1, log=True),           
         }        
 
     training_args = TrainingArguments(         
@@ -107,10 +105,10 @@ def run_search(args, train_data, tokenizer):
     best_run = trainer.hyperparameter_search(
         direction=["maximize"],
         backend="optuna",
-        hp_space=optuna_hp_space,
-        n_trials = args.n_trials,
-        #n_trials=10,
-        #storage='sqlite:///args.save_dir/hp_search.db', # falls das nicht geht: storage='sqlite:///../hp_search/hp_search.db',      
+        #hp_space=optuna_hp_space,  # => Use this for real hyperparam search
+        hp_space=baseline_hp_space, # => Use this to get the metrics for baeline model
+        n_trials = args.n_trials,        
+        storage='sqlite:///../hyperparameter_search/hp_search.db',  
         compute_objective=compute_objective,
     )
 
@@ -149,7 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str) 
 
     # Hyperparameter search
-    parser.add_argument('--n_trials', default=10, type=int)
+    parser.add_argument('--n_trials', default=1, type=int)
 
     # Logging and stuff
     parser.add_argument('--save_dir', default="../hyperparameter_search/", type=str)
