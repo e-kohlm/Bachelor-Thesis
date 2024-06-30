@@ -77,11 +77,11 @@ def run_search(args, train_data, tokenizer):
     training_args = TrainingArguments(         
         output_dir=args.save_dir,
         overwrite_output_dir=False,
-        save_strategy = "epoch",    
-        eval_strategy = "epoch",    
+        save_strategy="epoch",
+        eval_strategy="epoch",
         logging_strategy="epoch",   
         metric_for_best_model="f1", 
-        load_best_model_at_end=True, # When this option is enabled, the best checkpoint will always be saved. See save_total_limit for more.
+        load_best_model_at_end=True,  # When this option is enabled, the best checkpoint will always be saved. See save_total_limit for more.
         save_total_limit=1,          
         logging_first_step=True, 
         logging_steps=args.log_freq,
@@ -99,14 +99,15 @@ def run_search(args, train_data, tokenizer):
         callbacks=[EarlyStoppingCallback(early_stopping_patience=3)],  # Stop if no improvement for 3 evaluation steps, default = 1; 
                                                                         # early_stopping_threshold=0.0   
     )
-
+    database_storage = os.path.join(args.save_dir, 'hp_search.db')
     best_run = trainer.hyperparameter_search(
         direction=["maximize"],
         backend="optuna",
-        #hp_space=optuna_hp_space,  # => Use this for real hyperparam search
-        hp_space=baseline_hp_space, # => Use this to get the metrics for baeline model
-        n_trials = args.n_trials,        
-        storage='sqlite:///../hyperparameter_search/hp_search.db',  
+        #hp_space=optuna_hp_space,   # => Use this for real hyperparam search
+        hp_space=baseline_hp_space,  # => Use this to get the metrics for baseline model
+        n_trials=args.n_trials,
+        storage=f'sqlite:///{database_storage}',
+        #storage='sqlite:///../hyperparameter_search/hp_search.db',
         compute_objective=compute_objective,
     )
 
