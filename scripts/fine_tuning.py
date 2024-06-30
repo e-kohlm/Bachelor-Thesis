@@ -46,7 +46,7 @@ def run_training(args, model, train_data, tokenizer):
         eval_strategy="epoch",        
 
         num_train_epochs=args.epochs,
-        per_device_train_batch_size=args.batch_size_per_replica,
+        per_device_train_batch_size=args.per_device_train_batch_size,
         gradient_accumulation_steps=args.grad_acc_steps,
 
         learning_rate=args.lr,
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', default=10, type=int) # epochs
     parser.add_argument('--lr', default=5e-5, type=float) # learning rate
     parser.add_argument('--lr-warmup-steps', default=200, type=int) # learning rate
-    parser.add_argument('--batch-size-per-replica', default=8, type=int) # nicht dasselbe wie batch size, denke ich    
+    parser.add_argument('--per_device_train_batch_size', default=8, type=int) 
     parser.add_argument('--grad-acc-steps', default=4, type=int) # instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
     parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
     parser.add_argument('--deepspeed', default=None, type=str) # intetration with deepspeed library
