@@ -13,6 +13,7 @@ from transformers import (AutoTokenizer,
                         AutoModelForSequenceClassification,
                         logging
                         )
+from load_tokenize_data import load_tokenize_data
 from pynvml import *
 from pynvml.smi import nvidia_smi
 #import deepspeed
@@ -23,7 +24,7 @@ import evaluate
 import torch
 import numpy as np
 #import optuna
-from mpi4py import MPI
+#from mpi4py import MPI
 #os.environ['DS_SKIP_CUDA_CHECK']="1"
 
 logging.set_verbosity_error()
@@ -92,11 +93,11 @@ def run_training(args, model, train_data, tokenizer):
         eval_strategy="epoch",  
         metric_for_best_model="f1", 
         load_best_model_at_end=True,
-        save_total_limit=2, 
+        save_total_limit=1, 
 
         num_train_epochs=args.epochs,
         #per_device_eval_batch_size=1, 
-        per_device_train_batch_size=args.batch_size_per_replica,
+        per_device_train_batch_size=args.per_device_train_batch_size,
         gradient_accumulation_steps=args.grad_acc_steps,
         learning_rate=args.lr,
         weight_decay=0.05, #CodeT5+ default=0.05
@@ -107,7 +108,7 @@ def run_training(args, model, train_data, tokenizer):
         logging_steps=args.log_freq, 
         
         dataloader_drop_last=True, #CodeT5+ default=True
-        dataloader_num_workers=1, #CodeT5+ default=4, gruenau2: 3
+        dataloader_num_workers=4, # default = 0, bei 3 gpu und wert=2 = 6 subprocesses for data loading, #CodeT5+ default=4
         local_rank=args.local_rank, # args.local_rank ist default
         #deepspeed=ds_config_file,
         deepspeed=args.deepspeed, # args.deepspeed ist default
@@ -134,8 +135,8 @@ def run_training(args, model, train_data, tokenizer):
 
     #print_gpu_utilization()
    
-    result = trainer.train()
-    print_summary(result)
+    something = trainer.train()
+    nvidaiprint_summary(something)
     
     
 
@@ -158,8 +159,8 @@ def run_training(args, model, train_data, tokenizer):
     time_elapsed = end_time - start_time
     print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
 
-
-def load_tokenize_data(args, tokenizer):      
+# copied to load_tokenize_data.py should be imported - not tested yet!!!!
+"""def load_tokenize_data(args, tokenizer):      
     vulnerability_type = args.vuln_type
     # Check if train_data already exists in cache_data/
     if os.path.exists(args.cache_data):
@@ -188,7 +189,7 @@ def load_tokenize_data(args, tokenizer):
             preprocess_function,
             #data_collator, #neu
             batched=True,            
-            num_proc=16,           
+            #num_proc=16,           
         )    
 
         train_data = train_data.remove_columns(["snippet_id"])
@@ -200,7 +201,7 @@ def load_tokenize_data(args, tokenizer):
         train_data.save_to_disk(args.cache_data)
         print(f'  ==> Saved to {args.cache_data}')
         return train_data
-
+"""
 
 def main(args): 
     
@@ -213,10 +214,13 @@ def main(args):
     #tokenizer_max_len = 512                                        # mit order ohne das hat keine Auswirkung auf speed
     #tokenizer_config = {'max_len': tokenizer_max_len}    
     tokenizer = AutoTokenizer.from_pretrained(args.load) #, **tokenizer_config)
-    print("tokenizer: ", tokenizer)
+    #print("tokenizer: ", tokenizer)
 
     train_data = load_tokenize_data(args, tokenizer=tokenizer)  
     print("train_data: ", train_data)
+
+    print("Before model loaded: ")
+    print_gpu_utilization()
 
     # Check if an argument to test a smaller sample of data was given
     if args.data_num != -1:             
@@ -232,16 +236,18 @@ def main(args):
 
 
     
-    device = torch.device("cuda:1")
+    #device = torch.device("cuda:1") # wenn die 2 anderen in Betrieb, dann aber auch oben bei data_loader ändern
 
 
 
 
-    #device = "cuda" # "cuda" for GPU usage or "cpu" for CPU usage     
+    device = "cuda" # "cuda" for GPU usage or "cpu" for CPU usage     
     model = AutoModelForSequenceClassification.from_pretrained(args.load, #full xss heute nur 147 und sql nur 149 Stunden???
                                                         num_labels=2,
                                                         id2label=id2label,
                                                         label2id=label2id).to(device)
+    print("After model loaded: ")
+    print_gpu_utilization()                                                        
     
                                                          
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
@@ -260,7 +266,7 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', default=10, type=int) # epochs
     parser.add_argument('--lr', default=5e-5, type=float) # learning rate
     parser.add_argument('--lr-warmup-steps', default=200, type=int) # learning rate
-    parser.add_argument('--batch-size-per-replica', default=1, type=int) # default=8, nicht dasselbe wie batch size, denke ich 
+    parser.add_argument('--per_device_train_batch_size', default=1, type=int) 
     parser.add_argument('--grad-acc-steps', default=4, type=int) # default=4, instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
     parser.add_argument('--local_rank', default=-1, type=int) # default=-1, irgendwas mit distributed training
     parser.add_argument('--deepspeed', default=None, type=str) # interacion with deepspeed library default = None, ("deepspeed_config.json",)
