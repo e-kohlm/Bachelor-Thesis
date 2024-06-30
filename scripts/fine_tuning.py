@@ -3,7 +3,8 @@ import time
 import math
 import pprint
 import argparse
-from datasets import load_dataset, load_from_disk
+from load_tokenize_data import load_tokenize_data
+#from datasets import load_dataset, load_from_disk
 from transformers import (AutoTokenizer,
                         TrainingArguments,
                         Trainer, 
@@ -19,10 +20,10 @@ def run_training(args, model, train_data, tokenizer):
     
     start_time = time.time() 
 
-    accuracy = evaluate.load("accuracy")
-    f1 = evaluate.load("f1")
-    precision = evaluate.load("precision")
-    recall = evaluate.load("recall")    
+    #accuracy = evaluate.load("accuracy")
+    #f1 = evaluate.load("f1")
+    #precision = evaluate.load("precision")
+    #recall = evaluate.load("recall")    
 
 
     def compute_metrics(eval_pred):        
@@ -34,45 +35,47 @@ def run_training(args, model, train_data, tokenizer):
         return clf_metrics.compute(predictions=predictions, references=labels)
 
 
-    training_args = TrainingArguments(
-      
-        report_to='tensorboard',
+    training_args = TrainingArguments(              
         output_dir=args.save_dir,
         overwrite_output_dir=False,
 
         do_train=True,
-        save_strategy='epoch',
-        #save_strategy="no", #neu
-        eval_strategy="epoch",        
-
-        num_train_epochs=args.epochs,
-        per_device_train_batch_size=args.per_device_train_batch_size,
-        gradient_accumulation_steps=args.grad_acc_steps,
+        do_eval=True, #neu and actually not necessary since eval_strategy is set
+        do_predict=True,  #neu, whether to run predictions on the test set
+        save_strategy='epoch', 
+        eval_strategy="epoch",  
+        metric_for_best_model="f1",
+        eval_on_start=True,  # Performs sanity check before training
 
         learning_rate=args.lr,
-        weight_decay=0.05,
-        warmup_steps=args.lr_warmup_steps,
+        warmup_steps=args.lr_warmup_steps,        
+        per_device_train_batch_size=args.per_device_train_batch_size,
+        per_device_eval_batch_size=args.per_device_eval_batch_size,
+        optim=args.optimizer,
+        num_train_epochs=args.epochs,
+        weight_decay=args.weight_decay,
+        gradient_accumulation_steps=args.grad_acc_steps,   
 
-        logging_dir=args.save_dir,
+        save_total_limit=1,
+        load_best_model_at_end=True, 
+        save_only_model=True,
         logging_first_step=True,
         logging_steps=args.log_freq,
-        save_total_limit=1,
-
+        logging_dir=args.save_dir,
         dataloader_drop_last=True,
-        dataloader_num_workers=4,
-
+        dataloader_num_workers=4,  # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
+        
+        use_cpu=True,  #macht vielleicht die Warning weg
         local_rank=args.local_rank,
         deepspeed=args.deepspeed,
-        fp16=args.fp16,
-        push_to_hub=False, 
-        load_best_model_at_end=True, 
+        fp16=args.fp16,  
     )
 
     trainer = Trainer(
         model=model,
         args=training_args,        
         train_dataset=train_data["train"],
-        eval_dataset=train_data["validation"],        
+        eval_dataset=train_data["validation"],          
         tokenizer=tokenizer,        
         compute_metrics=compute_metrics,       
 
@@ -85,6 +88,9 @@ def run_training(args, model, train_data, tokenizer):
 
     # Evaluate the model on the test dataset   
     finaltest_set = train_data['test']
+
+    #trainer.evaluate will predict + compute metrics on your test set
+    #trainer.predict() will only predict labels on your test set. However in case the test set also contains ground-truth labels, the latter will also compute metrics.
 
     results = trainer.evaluate(eval_dataset=finaltest_set)  
     prediction = trainer.predict(test_dataset=finaltest_set)
@@ -103,7 +109,7 @@ def run_training(args, model, train_data, tokenizer):
     print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
 
 
-def load_tokenize_data(args, tokenizer):      
+"""def load_tokenize_data(args, tokenizer):      
     vulnerability_type = args.vuln_type
     # Check if train_data already exists in cache_data/
     if os.path.exists(args.cache_data):
@@ -151,7 +157,7 @@ def load_tokenize_data(args, tokenizer):
         print(f'\n  ==> Tokenized {len(train_data)} samples')        
         train_data.save_to_disk(args.cache_data)
         print(f'  ==> Saved to {args.cache_data}')
-        return train_data
+        return train_data"""
 
 
 def main(args): 
@@ -186,25 +192,34 @@ def main(args):
 
 if __name__ == "__main__": 
     parser = argparse.ArgumentParser(description="CodeT5+ finetuning on sequence classification task")
-    parser.add_argument('--vuln-type', default="sql", type=str)  
-    parser.add_argument('--data-num', default=-1, type=int)  
-    parser.add_argument('--cache-data', default='cache_data/', type=str)
+    parser.add_argument('--vuln_type', default="sql", type=str)  
+    parser.add_argument('--data_num', default=-1, type=int)  
+    parser.add_argument('--cache_data', default='cache_data/', type=str)
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str) 
 
-    # Training
-    parser.add_argument('--epochs', default=10, type=int) # epochs
-    parser.add_argument('--lr', default=5e-5, type=float) # learning rate
-    parser.add_argument('--lr-warmup-steps', default=200, type=int) # learning rate
-    parser.add_argument('--per_device_train_batch_size', default=8, type=int) 
-    parser.add_argument('--grad-acc-steps', default=4, type=int) # instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
+    # Training hyperparameters (defaults=baseline model based on Wang-Le-Gotmare-etal 2023 CodeT5+)    
+    parser.add_argument('--lr', default=2e-5, type=float) # initial learning rate for AdamW HF: default=5e-5
+    parser.add_argument('--lr_warmup_steps', default=0, type=int) # codet5+ paper: -, codet5+ code: default=200
+    parser.add_argument('--per_device_train_batch_size', default=32, type=int) # HF: default=8 
+    parser.add_argument('--per_device_eval_batch_size', default=8, type=int)  # Added for OutOfMem issue, HF: default=8;  neu!!! Reduce when OutOfMem occurs; does not need to have same value as per_device_train_batch_size
+    parser.add_argument('--optimizer', default='adamw_torch', type=int) # HF: default=adamw_torch
+    parser.add_argument('--epochs', default=10, type=int) # codet5+ code: default=4, HF: default=3
+    parser.add_argument('--weight_decay', default=0.1, type=int) # HF: default=0, codet5+ code: default=0.05
+    parser.add_argument('--grad_acc_steps', default=1, type=int) # codet5+ code: default=4; instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
+        
+    # Tokenization
+    #parser.add_argument('--max-source-len', default=320, type=int) # codet5+ code: default=320
+    #parser.add_argument('--max-target-len', default=128, type=int) # codet5+ code: default=128
+    
+    # GPU / Speeding up
     parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
-    parser.add_argument('--deepspeed', default=None, type=str) # intetration with deepspeed library
+    parser.add_argument('--deepspeed', default=None, type=str) # interaction with deepspeed library, it is experimental
     parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration
 
-    # Logging and stuff
-    parser.add_argument('--save-dir', default="saved_models/summarize_python", type=str)
-    parser.add_argument('--log-freq', default=10, type=int)
-    parser.add_argument('--save-freq', default=500, type=int)
+    # Logging
+    parser.add_argument('--save_dir', default="saved_models/summarize_python", type=str)
+    parser.add_argument('--log_freq', default=10, type=int)
+    parser.add_argument('--save_freq', default=500, type=int)
 
     args = parser.parse_args()
     os.makedirs(args.save_dir, exist_ok=True)

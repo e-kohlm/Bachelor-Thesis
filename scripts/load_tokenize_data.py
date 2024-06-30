@@ -2,8 +2,7 @@ import os
 from datasets import load_dataset, load_from_disk
 
 
-def load_tokenize_data(args, tokenizer):
-    print("tokenizer: ", tokenizer)
+def load_tokenize_data(args, tokenizer):    
     vulnerability_type = args.vuln_type
     print("\n  ==> Vulnerability type: ", vulnerability_type)
 
@@ -31,9 +30,23 @@ def load_tokenize_data(args, tokenizer):
                  
             #return tokenizer(examples["code"], truncation=True, max_length=tokenizer.model_max_length, padding='max_length')
 
-            # Calculate and print the size of the longest sequence in the batch
-            max_length = max(len(seq) for seq in tokenized_examples['input_ids']) #new
+            # Longest sequence in the batch
+            """max_length = max(len(seq) for seq in tokenized_examples['input_ids']) #new
             print(f"Max sequence length in batch: {max_length}")
+
+            print("\nDetailed info about tokenized examples:")
+            print(f"Number of examples: {len(tokenized_examples['input_ids'])}")
+            for i in range(min(3, len(tokenized_examples['input_ids']))):
+                print(f"\nExample {i+1}:")
+                print(f"  Input IDs: {tokenized_examples['input_ids'][i]}")
+                print(f"  Attention Mask: {tokenized_examples['attention_mask'][i]}")
+                if 'token_type_ids' in tokenized_examples:
+                    print(f"  Token Type IDs: {tokenized_examples['token_type_ids'][i]}")
+                print(f"  Length: {len(tokenized_examples['input_ids'][i])}")
+            
+            print("\nFull structure of tokenized examples:")
+            for key, value in tokenized_examples.items():
+                print(f"{key}: {value[:3]}")"""
             return tokenized_examples
 
         train_data = datasets.map(

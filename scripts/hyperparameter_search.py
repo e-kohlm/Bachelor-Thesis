@@ -34,17 +34,15 @@ def run_search(args, train_data, tokenizer):
         print(f"\n  ==> Loaded model from {model_name}, model size {model.num_parameters()}")
         return model
 
-    def compute_objective():
+    def compute_objective(metrics):
         eval_result = trainer.evaluate()
         print("\n objective eval_result['eval_f1']", eval_result['eval_f1'])
         return eval_result['eval_f1']
 
     def compute_metrics(eval_pred):
         predictions, labels = eval_pred
-        tuple_element_1 = np.asarray(predictions[0])
-        print("tuple_element_1: ", tuple_element_1)
-        tuple_element_2 = np.asarray(predictions[1])
-        print("tuple_element_2: ", tuple_element_2)
+        tuple_element_1 = np.asarray(predictions[0])        
+        tuple_element_2 = np.asarray(predictions[1])  # can go?        
         predictions = np.argmax(tuple_element_1, axis=1)
         #metric = evaluate.load("f1") #neu, ich bekomme also nur f1 zurück
         clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])
@@ -55,9 +53,9 @@ def run_search(args, train_data, tokenizer):
         print(f'\n  ==> Started trial {trial.number}')
         return {
             "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-3, log=True),
-            "warmup_steps": trial.suggest_int('warmup_steps', 100, 500),
+            "warmup_steps": trial.suggest_int('warmup_steps', 0, 500),
             "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size",
-                                                                     [8, 16, 32, 64, 128, 256, 1024]),
+                                                                     [8, 16, 32, 64, 128, 256, 1024]),                    
             "optim": trial.suggest_categorical("optim", ["adamw_torch", "rmsprop"]),  # LAMB probably only on GPU?
             "num_train_epochs": trial.suggest_int('epochs', 1, 50),
             "weight_decay": trial.suggest_float("weight_decay", 0.05, 0.1, log=True),  #default=0
@@ -65,7 +63,7 @@ def run_search(args, train_data, tokenizer):
         }
 
     # Baseline model hyperparameter based on Wang-Le-Gotmare CodeT5+
-    def baseline_hp_space(trial):
+    """def baseline_hp_space(trial):
         print(f'\n  ==> Started trial {trial.number}')
         return {
             "learning_rate": trial.suggest_float("learning_rate", 2e-5, 2e-5, log=True),
@@ -73,21 +71,32 @@ def run_search(args, train_data, tokenizer):
             "optim": trial.suggest_categorical("optim", ["adamw_torch"]),  # default ist adamW
             "num_train_epochs": trial.suggest_int('epochs', 10, 10),
             "weight_decay": trial.suggest_float("weight_decay", 0.1, 0.1, log=True),
-        }
+        }"""
 
     training_args = TrainingArguments(
         output_dir=args.save_dir,
         overwrite_output_dir=False,
+
+        do_train=True,
+        do_eval=True, #neu and actually not necessary since eval_strategy is set
         save_strategy="epoch",
         eval_strategy="epoch",
-        logging_strategy="epoch",
-        metric_for_best_model="f1",
-        load_best_model_at_end=True,
-        # When this option is enabled, the best checkpoint will always be saved. See save_total_limit for more.
+        metric_for_best_model="f1", 
+        eval_on_start=True,  # Performs sanity check before training   
+
         save_total_limit=1,
+        load_best_model_at_end=True,
+        save_only_model=True,
         logging_first_step=True,
         logging_steps=args.log_freq,
         logging_dir=args.save_dir,
+        dataloader_drop_last=True,
+        dataloader_num_workers=4, # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
+        
+        use_cpu=True,  #macht vielleicht die Warning weg   
+        local_rank=args.local_rank,
+        deepspeed=args.deepspeed,
+        fp16=args.fp16,  
     )
 
     trainer = Trainer(
@@ -106,8 +115,8 @@ def run_search(args, train_data, tokenizer):
     best_run = trainer.hyperparameter_search(
         direction=["maximize"],
         backend="optuna",
-        #hp_space=optuna_hp_space,   # => Use this for real hyperparam search
-        hp_space=baseline_hp_space,  # => Use this to get the metrics for baseline model
+        hp_space=optuna_hp_space,   # => Use this for real hyperparam search
+        #hp_space=baseline_hp_space,  # => Use this to get the metrics for baseline model
         n_trials=args.n_trials,
         storage=f'sqlite:///{database_storage}',
         #storage='sqlite:///../hyperparameter_search/hp_search.db',
@@ -127,10 +136,12 @@ def main(args):
     with open(os.path.join(args.save_dir, "command.txt"), 'w') as f:
         f.write(pprint.pformat(argsdict))
 
-        #tokenizer = AutoTokenizer.from_pretrained('Salesforce/codet5p-220m')
     tokenizer = AutoTokenizer.from_pretrained(args.load)
     train_data = load_tokenize_data(args=args, tokenizer=tokenizer)
     print("train_data:\n", train_data)
+    print("train_data['train'][0]: ", train_data['train'][0])
+    print("train_data['validation'][0]: ", train_data['validation'][0])
+    print("train_data['test'][0]: ", train_data['test'][0])
 
     # Check if an argument to test a smaller sample of data was given
     if args.data_num != -1:
@@ -154,8 +165,14 @@ if __name__ == "__main__":
 
     # Hyperparameter search
     parser.add_argument('--n_trials', default=1, type=int)
+    
 
-    # Logging and stuff
+    # GPU / Speeding up
+    parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
+    parser.add_argument('--deepspeed', default=None, type=str) # interaction with deepspeed library, it is experimental
+    parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration
+
+    # Logging
     parser.add_argument('--save_dir', default="../hyperparameter_search/", type=str)
     parser.add_argument('--log_freq', default=10, type=int)
     parser.add_argument('--save_freq', default=500, type=int)
