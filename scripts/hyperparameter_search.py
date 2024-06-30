@@ -43,7 +43,9 @@ def run_search(args, train_data, tokenizer):
     def compute_metrics(eval_pred): 
         predictions, labels = eval_pred 
         tuple_element_1 = np.asarray(predictions[0])
+        print("tuple_element_1: ", tuple_element_1)
         tuple_element_2 = np.asarray(predictions[1])
+        print("tuple_element_2: ", tuple_element_2)
         predictions = np.argmax(tuple_element_1, axis=1)
         #metric = evaluate.load("f1") #neu, ich bekomme also nur f1 zurück
         clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])    
