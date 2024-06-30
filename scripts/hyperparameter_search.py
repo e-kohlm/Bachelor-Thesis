@@ -81,8 +81,7 @@ def run_search(args, train_data, tokenizer):
         do_eval=True, #neu and actually not necessary since eval_strategy is set
         save_strategy="epoch",
         eval_strategy="epoch",
-        metric_for_best_model="f1", 
-        eval_on_start=True,  # Performs sanity check before training   
+        metric_for_best_model="f1",         
 
         save_total_limit=1,
         load_best_model_at_end=True,
@@ -138,10 +137,7 @@ def main(args):
 
     tokenizer = AutoTokenizer.from_pretrained(args.load)
     train_data = load_tokenize_data(args=args, tokenizer=tokenizer)
-    print("train_data:\n", train_data)
-    print("train_data['train'][0]: ", train_data['train'][0])
-    print("train_data['validation'][0]: ", train_data['validation'][0])
-    print("train_data['test'][0]: ", train_data['test'][0])
+    print("train_data:\n", train_data)    
 
     # Check if an argument to test a smaller sample of data was given
     if args.data_num != -1:
@@ -160,8 +156,8 @@ if __name__ == "__main__":
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str)
 
     # Tokenization
-    #parser.add_argument('--max-source-len', default=320, type=int)
-    #parser.add_argument('--max-target-len', default=128, type=int)
+    #parser.add_argument('--max_source_len', default=320, type=int)
+    #parser.add_argument('--max_target_len', default=128, type=int)
 
     # Hyperparameter search
     parser.add_argument('--n_trials', default=1, type=int)

@@ -62,5 +62,5 @@ def load_tokenize_data(args, tokenizer):
 
         print(f'\n  ==> Tokenized {len(train_data)} samples')        
         train_data.save_to_disk(args.cache_data)
-        print(f'  ==> Saved to {args.cache_data}')
+        print(f'\n  ==> Saved to {args.cache_data}')
         return train_data

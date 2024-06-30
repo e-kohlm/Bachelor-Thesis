@@ -109,7 +109,7 @@ def run_training(args, model, train_data, tokenizer):
 
 def main(args): 
     argsdict = vars(args) 
-    #print("Arguments:\n", pprint.pformat(argsdict))
+    print("Arguments:\n", pprint.pformat(argsdict))
    
     with open(os.path.join(args.save_dir, "command.txt"), 'w') as f:
         f.write(pprint.pformat(argsdict)) 
