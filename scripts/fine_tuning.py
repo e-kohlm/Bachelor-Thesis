@@ -44,8 +44,7 @@ def run_training(args, model, train_data, tokenizer):
         do_predict=True,  #neu, whether to run predictions on the test set
         save_strategy='epoch', 
         eval_strategy="epoch",  
-        metric_for_best_model="f1",
-        eval_on_start=True,  # Performs sanity check before training
+        metric_for_best_model="f1",       
 
         learning_rate=args.lr,
         warmup_steps=args.lr_warmup_steps,        
@@ -65,7 +64,7 @@ def run_training(args, model, train_data, tokenizer):
         dataloader_drop_last=True,
         dataloader_num_workers=4,  # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
         
-        use_cpu=True,  #macht vielleicht die Warning weg
+        #use_cpu=True,  #macht vielleicht die Warning weg
         local_rank=args.local_rank,
         deepspeed=args.deepspeed,
         fp16=args.fp16,  
@@ -108,58 +107,6 @@ def run_training(args, model, train_data, tokenizer):
     time_elapsed = end_time - start_time
     print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
 
-
-"""def load_tokenize_data(args, tokenizer):      
-    vulnerability_type = args.vuln_type
-    # Check if train_data already exists in cache_data/
-    if os.path.exists(args.cache_data):
-        train_data = load_from_disk(args.cache_data)
-        print(f'\n  ==> Loaded {len(train_data)} samples')
-        return train_data
-    # Load data
-    else: 
-        file_path = "../VUDENC_data/"
-        training_set = vulnerability_type + "_dataset-TRAINING"
-        validation_set = vulnerability_type + "_dataset-VALIDATION"
-        test_set = vulnerability_type + "_dataset-TESTING"
-
-
-        data_files = {"train": file_path + training_set, "validation": file_path + validation_set, "test": file_path + test_set}
-        datasets = load_dataset("json", data_files=data_files)    
-
-
-        
-
-        #data_collator = DataCollatorWithPadding(tokenizer=tokenizer) #neu
-
-        def preprocess_function(examples):         
-                 
-            return tokenizer(examples["code"], truncation=True, max_length=tokenizer.model_max_length, padding='max_length')
-      
-        train_data = datasets.map(
-            preprocess_function,
-            #data_collator, #neu
-            batched=True,            
-            num_proc=64,           
-        )    
-
-        train_data = train_data.remove_columns(["snippet_id"])
-        train_data = train_data.rename_column("label", "labels")
-        train_data.set_format("torch")
-        print("train_data: ", train_data)   
-
-        
-       
-
-
-        
-
-        print(f'\n  ==> Tokenized {len(train_data)} samples')        
-        train_data.save_to_disk(args.cache_data)
-        print(f'  ==> Saved to {args.cache_data}')
-        return train_data"""
-
-
 def main(args): 
     argsdict = vars(args) 
     #print("Arguments:\n", pprint.pformat(argsdict))
@@ -179,11 +126,12 @@ def main(args):
     
  
     id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}   
-    label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}    
+    label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1} 
+    device = "cpu"  # "cuda" for GPU usage or "cpu" for CPU usage   
     model = AutoModelForSequenceClassification.from_pretrained(args.load, 
                                                         num_labels=2,
                                                         id2label=id2label,
-                                                        label2id=label2id)
+                                                        label2id=label2id).to(device)
                                                               
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
 
@@ -202,14 +150,14 @@ if __name__ == "__main__":
     parser.add_argument('--lr_warmup_steps', default=0, type=int) # codet5+ paper: -, codet5+ code: default=200
     parser.add_argument('--per_device_train_batch_size', default=32, type=int) # HF: default=8 
     parser.add_argument('--per_device_eval_batch_size', default=8, type=int)  # Added for OutOfMem issue, HF: default=8;  neu!!! Reduce when OutOfMem occurs; does not need to have same value as per_device_train_batch_size
-    parser.add_argument('--optimizer', default='adamw_torch', type=int) # HF: default=adamw_torch
+    parser.add_argument('--optimizer', default='adamw_torch', type=str) # HF: default=adamw_torch
     parser.add_argument('--epochs', default=10, type=int) # codet5+ code: default=4, HF: default=3
     parser.add_argument('--weight_decay', default=0.1, type=int) # HF: default=0, codet5+ code: default=0.05
     parser.add_argument('--grad_acc_steps', default=1, type=int) # codet5+ code: default=4; instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
         
     # Tokenization
-    #parser.add_argument('--max-source-len', default=320, type=int) # codet5+ code: default=320
-    #parser.add_argument('--max-target-len', default=128, type=int) # codet5+ code: default=128
+    #parser.add_argument('--max_source_len', default=320, type=int) # codet5+ code: default=320
+    #parser.add_argument('--max_target_len', default=128, type=int) # codet5+ code: default=128
     
     # GPU / Speeding up
     parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
