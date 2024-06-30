@@ -11,8 +11,6 @@ import pprint
 from load_tokenize_data import load_tokenize_data
 import numpy as np
 import evaluate
-import optuna
-
 
 
 def run_search(args, train_data, tokenizer):
@@ -37,7 +35,7 @@ def run_search(args, train_data, tokenizer):
         print(f"\n  ==> Loaded model from {model_name}, model size {model.num_parameters()}")  
         return model
 
-    def compute_objective(metrics): 
+    def compute_objective():
         eval_result = trainer.evaluate()
         print("\n objective eval_result['eval_f1']", eval_result['eval_f1'] )
         return eval_result['eval_f1']          
@@ -52,7 +50,7 @@ def run_search(args, train_data, tokenizer):
         return clf_metrics.compute(predictions=predictions, references=labels) 
         #return metric.compute(predictions=predictions, references=labels) #neu, ich bekomme also nur f1 zurück
 
-    # A function that defines the hyperparameter search space => in Thesis übernehmen
+
     def optuna_hp_space(trial):
         print(f'\n  ==> Started trial {trial.number}') 
         return {
@@ -72,7 +70,7 @@ def run_search(args, train_data, tokenizer):
             "learning_rate": trial.suggest_float("learning_rate", 2e-5, 2e-5, log=True),         
             "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size", [32]),
             "optim": trial.suggest_categorical("optim", ["adamw_torch"]), # default ist adamW
-            "num_train_epochs": trial.suggest_int('epochs',10, 10), 
+            "num_train_epochs": trial.suggest_int('epochs', 10, 10),
             "weight_decay": trial.suggest_float("weight_decay", 0.1, 0.1, log=True),           
         }        
 

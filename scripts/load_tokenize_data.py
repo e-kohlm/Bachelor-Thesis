@@ -1,9 +1,9 @@
 import os
-import argparse
 from datasets import load_dataset, load_from_disk
 
 
-def load_tokenize_data(args, tokenizer):      
+def load_tokenize_data(args, tokenizer):
+    print("tokenizer: ", tokenizer)
     vulnerability_type = args.vuln_type
     print("\n  ==> Vulnerability type: ", vulnerability_type)
 
@@ -24,11 +24,18 @@ def load_tokenize_data(args, tokenizer):
 
         #data_collator = DataCollatorWithPadding(tokenizer=tokenizer) #neu
 
-        def preprocess_function(examples):         
+        def preprocess_function(examples):
+
+            tokenized_examples = tokenizer(examples["code"], truncation=True, padding=True) #padding: True = pad to the longest sequence in the batch
+                                                                              #truncation: True = truncate to the maximum length accepted by the model if no max_length is provided which is 512
                  
             #return tokenizer(examples["code"], truncation=True, max_length=tokenizer.model_max_length, padding='max_length')
-            return tokenizer(examples["code"], truncation=True, padding=True) #padding: True = pad to the longest sequence in the batch
-                                                                              #truncation: True = truncate to the maximum length accepted by the model if no max_length is provided                                                                                                                                              
+
+            # Calculate and print the size of the longest sequence in the batch
+            max_length = max(len(seq) for seq in tokenized_examples['input_ids']) #new
+            print(f"Max sequence length in batch: {max_length}")
+            return tokenized_examples
+
         train_data = datasets.map(
             preprocess_function,
             #data_collator, #neu
