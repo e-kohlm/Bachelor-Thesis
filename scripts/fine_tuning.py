@@ -40,7 +40,7 @@ def run_training(args, model, train_data, tokenizer):
         overwrite_output_dir=False,
 
         do_train=True,
-        do_eval=True, #neu and actually not necessary since eval_strategy is set
+        #do_eval=True, #neu and actually not necessary since eval_strategy is set
         do_predict=True,  #neu, whether to run predictions on the test set
         save_strategy='epoch', 
         eval_strategy="epoch",  
@@ -62,7 +62,7 @@ def run_training(args, model, train_data, tokenizer):
         logging_steps=args.log_freq,
         logging_dir=args.save_dir,
         dataloader_drop_last=True,
-        dataloader_num_workers=4,  # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
+        #dataloader_num_workers=4,  # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
         
         #use_cpu=True,  #macht vielleicht die Warning weg
         local_rank=args.local_rank,
@@ -91,10 +91,16 @@ def run_training(args, model, train_data, tokenizer):
     #trainer.evaluate will predict + compute metrics on your test set
     #trainer.predict() will only predict labels on your test set. However in case the test set also contains ground-truth labels, the latter will also compute metrics.
 
-    results = trainer.evaluate(eval_dataset=finaltest_set)  
+    evaluation = trainer.evaluate(eval_dataset=finaltest_set)  
     prediction = trainer.predict(test_dataset=finaltest_set)
-    print("results: ", results)
+    print("evaluation: ", evaluation)
     print("prediction: ", prediction)
+
+    with open(os.path.join(args.save_dir, str(str(args.vuln_type) + "_" + str(args.data_num) + "_evaluation_results.json")), "w") as f:
+        json.dump(evaluation, f, indent=4)
+
+    with open(os.path.join(args.save_dir, str(str(args.vuln_type) + "_" + str(args.data_num) + "_prediction_results.json")), "w") as f:
+        json.dump(prediction.metrics, f, indent=4)
 
     if args.local_rank in [0, -1]:
         final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint") #alt
@@ -134,6 +140,10 @@ def main(args):
                                                         label2id=label2id).to(device)
                                                               
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
+
+    # Verify model and tokenizer compatibility
+    print(f"Model architecture: {model.config.architectures}")
+    print(f"Tokenizer model max length: {tokenizer.model_max_length}")
 
     run_training(args, model, train_data, tokenizer=tokenizer)
 
