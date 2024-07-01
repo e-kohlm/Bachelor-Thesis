@@ -18,16 +18,12 @@ import numpy as np
 
 def run_training(args, model, train_data, tokenizer):    
     
-    start_time = time.time() 
-
-    #accuracy = evaluate.load("accuracy")
-    #f1 = evaluate.load("f1")
-    #precision = evaluate.load("precision")
-    #recall = evaluate.load("recall")    
-
+    start_time = time.time()
 
     def compute_metrics(eval_pred):        
         predictions, labels = eval_pred 
+        #print("pred 0: ", predictions[0])
+        #print("pred 1: ", predictions[1])
         tuple_element_1 = np.asarray(predictions[0])
         tuple_element_2 = np.asarray(predictions[1])
         predictions = np.argmax(tuple_element_1, axis=1)
@@ -40,7 +36,7 @@ def run_training(args, model, train_data, tokenizer):
         overwrite_output_dir=False,
 
         do_train=True,
-        #do_eval=True, #neu and actually not necessary since eval_strategy is set
+        do_eval=True, #neu and actually not necessary since eval_strategy is set
         do_predict=True,  #neu, whether to run predictions on the test set
         save_strategy='epoch', 
         eval_strategy="epoch",  
@@ -63,8 +59,7 @@ def run_training(args, model, train_data, tokenizer):
         logging_dir=args.save_dir,
         dataloader_drop_last=True,
         #dataloader_num_workers=4,  # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
-        
-        #use_cpu=True,  #macht vielleicht die Warning weg
+       
         local_rank=args.local_rank,
         deepspeed=args.deepspeed,
         fp16=args.fp16,  
@@ -76,14 +71,11 @@ def run_training(args, model, train_data, tokenizer):
         train_dataset=train_data["train"],
         eval_dataset=train_data["validation"],          
         tokenizer=tokenizer,        
-        compute_metrics=compute_metrics,       
-
+        compute_metrics=compute_metrics,  
     )   
    
     trainer.train()
     trainer.save_model() 
-
-   
 
     # Evaluate the model on the test dataset   
     finaltest_set = train_data['test']
@@ -103,8 +95,7 @@ def run_training(args, model, train_data, tokenizer):
         json.dump(prediction.metrics, f, indent=4)
 
     if args.local_rank in [0, -1]:
-        final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint") #alt
-        #final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint", "model.pt") # test: no
+        final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint")   
         model.save_pretrained(final_checkpoint_dir)
         print(f'  ==> Finish training and save to {final_checkpoint_dir}')
     
@@ -140,10 +131,6 @@ def main(args):
                                                         label2id=label2id).to(device)
                                                               
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
-
-    # Verify model and tokenizer compatibility
-    print(f"Model architecture: {model.config.architectures}")
-    print(f"Tokenizer model max length: {tokenizer.model_max_length}")
 
     run_training(args, model, train_data, tokenizer=tokenizer)
 

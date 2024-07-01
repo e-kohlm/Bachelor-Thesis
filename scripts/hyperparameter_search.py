@@ -60,18 +60,7 @@ def run_search(args, train_data, tokenizer):
             "num_train_epochs": trial.suggest_int('epochs', 1, 50),
             "weight_decay": trial.suggest_float("weight_decay", 0.05, 0.1, log=True),  #default=0
             "gradient_accumulation_steps": trial.suggest_int('gradient_accumulation_steps', 1, 8),
-        }
-
-    # Baseline model hyperparameter based on Wang-Le-Gotmare CodeT5+
-    """def baseline_hp_space(trial):
-        print(f'\n  ==> Started trial {trial.number}')
-        return {
-            "learning_rate": trial.suggest_float("learning_rate", 2e-5, 2e-5, log=True),
-            "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size", [32]),
-            "optim": trial.suggest_categorical("optim", ["adamw_torch"]),  # default ist adamW
-            "num_train_epochs": trial.suggest_int('epochs', 10, 10),
-            "weight_decay": trial.suggest_float("weight_decay", 0.1, 0.1, log=True),
-        }"""
+        }    
 
     training_args = TrainingArguments(
         output_dir=args.save_dir,
@@ -91,8 +80,7 @@ def run_search(args, train_data, tokenizer):
         logging_dir=args.save_dir,
         dataloader_drop_last=True,
         dataloader_num_workers=4, # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
-        
-        use_cpu=True,  #macht vielleicht die Warning weg   
+                
         local_rank=args.local_rank,
         deepspeed=args.deepspeed,
         fp16=args.fp16,  
@@ -160,8 +148,7 @@ if __name__ == "__main__":
     #parser.add_argument('--max_target_len', default=128, type=int)
 
     # Hyperparameter search
-    parser.add_argument('--n_trials', default=1, type=int)
-    
+    parser.add_argument('--n_trials', default=1, type=int)    
 
     # GPU / Speeding up
     parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training

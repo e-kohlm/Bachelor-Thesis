@@ -1,5 +1,7 @@
 import os
 from datasets import load_dataset, load_from_disk
+from transformers import AutoTokenizer
+from trouble_shot_utils import get_tokenized_data_info
 
 
 def load_tokenize_data(args, tokenizer):    
@@ -29,24 +31,10 @@ def load_tokenize_data(args, tokenizer):
                                                                               #truncation: True = truncate to the maximum length accepted by the model if no max_length is provided which is 512
                  
             #return tokenizer(examples["code"], truncation=True, max_length=tokenizer.model_max_length, padding='max_length')
-
-            # Longest sequence in the batch
-            """max_length = max(len(seq) for seq in tokenized_examples['input_ids']) #new
-            print(f"Max sequence length in batch: {max_length}")
-
-            print("\nDetailed info about tokenized examples:")
-            print(f"Number of examples: {len(tokenized_examples['input_ids'])}")
-            for i in range(min(3, len(tokenized_examples['input_ids']))):
-                print(f"\nExample {i+1}:")
-                print(f"  Input IDs: {tokenized_examples['input_ids'][i]}")
-                print(f"  Attention Mask: {tokenized_examples['attention_mask'][i]}")
-                if 'token_type_ids' in tokenized_examples:
-                    print(f"  Token Type IDs: {tokenized_examples['token_type_ids'][i]}")
-                print(f"  Length: {len(tokenized_examples['input_ids'][i])}")
             
-            print("\nFull structure of tokenized examples:")
-            for key, value in tokenized_examples.items():
-                print(f"{key}: {value[:3]}")"""
+            # Just for trouble shot
+            get_tokenized_data_info(tokenized_examples=tokenized_examples)
+            
             return tokenized_examples
 
         train_data = datasets.map(
