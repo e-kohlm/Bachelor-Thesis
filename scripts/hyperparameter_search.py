@@ -79,7 +79,7 @@ def run_search(args, train_data, tokenizer):
         logging_steps=args.log_freq,
         logging_dir=args.save_dir,
         dataloader_drop_last=True,
-        dataloader_num_workers=4, # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
+        #dataloader_num_workers=4, # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
                 
         local_rank=args.local_rank,
         deepspeed=args.deepspeed,

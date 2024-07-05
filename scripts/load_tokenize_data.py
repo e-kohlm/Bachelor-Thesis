@@ -33,7 +33,7 @@ def load_tokenize_data(args, tokenizer):
             #return tokenizer(examples["code"], truncation=True, max_length=tokenizer.model_max_length, padding='max_length')
             
             # Just for trouble shot
-            get_tokenized_data_info(tokenized_examples=tokenized_examples)
+            #get_tokenized_data_info(tokenized_examples=tokenized_examples)
             
             return tokenized_examples
 
