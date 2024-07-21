@@ -302,9 +302,9 @@ if __name__ == "__main__":
     parser.add_argument('--fp16', default=False, action='store_true') # default=False, action='store_true', with mixed precision for training acceleration
 
     # Logging and stuff
-    parser.add_argument('--save-dir', default="../saved_models", type=str)
-    parser.add_argument('--log-freq', default=10, type=int) #default=10
-    parser.add_argument('--save-freq', default=500, type=int) # default=500 
+    parser.add_argument('--save_dir', default="../saved_models", type=str)
+    parser.add_argument('--log_freq', default=10, type=int) #default=10
+    parser.add_argument('--save_freq', default=500, type=int) # default=500 
 
     args = parser.parse_args()
     os.makedirs(args.save_dir, exist_ok=True)
