@@ -12,7 +12,7 @@ from transformers import (AutoTokenizer,
                         #pipeline,
                         #DataCollatorWithPadding,
                         AutoModelForSequenceClassification,
-                        logging
+                        #logging
                         )
 from load_tokenize_data import load_tokenize_data
 from pynvml import *
@@ -28,7 +28,7 @@ import numpy as np
 #from mpi4py import MPI
 #os.environ['DS_SKIP_CUDA_CHECK']="1"
 
-logging.set_verbosity_error()
+#logging.set_verbosity_error()
 
 def print_gpu_utilization():
     nvmlInit()
@@ -277,9 +277,9 @@ def main(args):
 
 if __name__ == "__main__": 
     parser = argparse.ArgumentParser(description="CodeT5+ finetuning on sequence classification task")
-    parser.add_argument('--vuln-type', default="sql", type=str)  
-    parser.add_argument('--data-num', default=-1, type=int)  
-    parser.add_argument('--cache-data', default='../cache_data', type=str)
+    parser.add_argument('--vuln_type', default="sql", type=str)  
+    parser.add_argument('--data_num', default=-1, type=int)  
+    parser.add_argument('--cache_data', default='../cache_data', type=str)
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str) 
 
     # Training    

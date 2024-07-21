@@ -1,5 +1,8 @@
 ### command fine-tuning
-`fine_tuning.py --vuln_type=EXAMPLE_sql  --cache_data=../cache_data/EXAMPLE_sql --save_dir=../saved_models/EXAMPLE_sql --epochs=3`
+`nice -n 19 python3 fine_tuning.py --vuln_type=sql  --cache_data=../cache_data/sql --save_dir=../saved_models/sql --data_num=20000`
+
+### command gpu_fine-tuning
+`nice -n 19 python3 gpu_fine_tuning.py --vuln_type=sql  --cache_data=../cache_data/sql --save_dir=../saved_models/sql --per_device_train_batch_size=1 --per_device_eval_batch_size=1`
 
 ## hyperparameter search
 `nice -n 19 python3 hyperparameter_search.py --vuln_type=xss --data_num=20000 --n_trials=1 --cache_data=../cache_data/xss`
