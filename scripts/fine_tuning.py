@@ -1,5 +1,7 @@
 import os
-import time
+#import time
+#import datetime
+from datetime import datetime, timedelta
 import math
 import pprint
 import argparse
@@ -18,7 +20,9 @@ import numpy as np
 
 def run_training(args, model, train_data, tokenizer):    
     
-    start_time = time.time()
+    #start_time = time.time()
+    start_time = datetime.now()
+    print("start_time: ", start_time)
 
     def compute_metrics(eval_pred):        
         predictions, labels = eval_pred 
@@ -100,9 +104,23 @@ def run_training(args, model, train_data, tokenizer):
         print(f'  ==> Finish training and save to {final_checkpoint_dir}')
     
     
-    end_time = time.time()
+    #end_time = time.time()
+    end_time = datetime.now()
     time_elapsed = end_time - start_time
-    print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
+    #print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
+    #time_elapsed_formatted = str(datetime.timedelta(seconds=time_elapsed))
+    #print("time_elapsed_formatted: ", time_elapsed_formatted, "\n" )
+
+    # Get days, hours, and minutes from the timedelta object
+    days = time_elapsed.days
+    hours = time_elapsed.seconds // 3600
+    minutes = (time_elapsed.seconds % 3600) // 60
+
+    # Format the output
+    formatted_time_elapsed = f"Days:{days:02} Hours:{hours:02} Minutes:{minutes:02}"
+
+    print(f"Time elapsed: {formatted_time_elapsed}")
+
 
 def main(args): 
     argsdict = vars(args) 
@@ -139,7 +157,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CodeT5+ finetuning on sequence classification task")
     parser.add_argument('--vuln_type', default="sql", type=str)  
     parser.add_argument('--data_num', default=-1, type=int)  
-    parser.add_argument('--cache_data', default='cache_data/', type=str)
+    parser.add_argument('--cache_data', default='../cache_data/', type=str)
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str) 
 
     # Training hyperparameters (defaults=baseline model based on Wang-Le-Gotmare-etal 2023 CodeT5+)    
@@ -162,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration
 
     # Logging
-    parser.add_argument('--save_dir', default="saved_models/summarize_python", type=str)
+    parser.add_argument('--save_dir', default="../saved_models/", type=str)
     parser.add_argument('--log_freq', default=10, type=int)
     parser.add_argument('--save_freq', default=500, type=int)
 

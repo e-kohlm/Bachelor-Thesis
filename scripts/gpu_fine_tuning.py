@@ -1,6 +1,7 @@
 import os
 #os.environ["DS_SKIP_CUDA_CHECK"] = "1" #because of BUG: https://github.com/microsoft/DeepSpeed/issues/3223
-import time
+#import time
+from datetime import datetime, timedelta
 import math
 import pprint
 import argparse
@@ -8,8 +9,8 @@ from datasets import load_dataset, load_from_disk
 from transformers import (AutoTokenizer,
                         TrainingArguments,
                         Trainer,                          
-                        pipeline,
-                        DataCollatorWithPadding,
+                        #pipeline,
+                        #DataCollatorWithPadding,
                         AutoModelForSequenceClassification,
                         logging
                         )
@@ -62,12 +63,14 @@ def run_training(args, model, train_data, tokenizer):
     
 
     print_gpu_utilization()
-    start_time = time.time() 
+    #start_time = time.time() 
+    start_time = datetime.now()
+    print("start_time: ", start_time)
 
-    accuracy = evaluate.load("accuracy")
-    f1 = evaluate.load("f1")
-    precision = evaluate.load("precision")
-    recall = evaluate.load("recall")    
+    #accuracy = evaluate.load("accuracy")
+    #f1 = evaluate.load("f1")
+    #precision = evaluate.load("precision")
+    #recall = evaluate.load("recall")    
 
 
     def compute_metrics(eval_pred):        
@@ -83,39 +86,39 @@ def run_training(args, model, train_data, tokenizer):
     #hf_deepspeed_config = HfDeepSpeedConfig(ds_config_file)
 
 
-    training_args = TrainingArguments(      
-        report_to='tensorboard',
+    training_args = TrainingArguments(              
         output_dir=args.save_dir,
         overwrite_output_dir=False,
 
         do_train=True,
+        do_eval=True, #neu and actually not necessary since eval_strategy is set
+        do_predict=True,  #neu, whether to run predictions on the test set
         save_strategy='epoch',        
         eval_strategy="epoch",  
         metric_for_best_model="f1", 
-        load_best_model_at_end=True,
-        save_total_limit=1, 
 
-        num_train_epochs=args.epochs,
-        #per_device_eval_batch_size=1, 
-        per_device_train_batch_size=args.per_device_train_batch_size,
-        gradient_accumulation_steps=args.grad_acc_steps,
         learning_rate=args.lr,
-        weight_decay=0.05, #CodeT5+ default=0.05
         warmup_steps=args.lr_warmup_steps,
+        per_device_train_batch_size=args.per_device_train_batch_size,
+        per_device_eval_batch_size=args.per_device_eval_batch_size,
+        optim=args.optimizer,
+        num_train_epochs=args.epochs,
+        weight_decay=args.weight_decay,
+        gradient_accumulation_steps=args.grad_acc_steps,
         
-        logging_dir=args.save_dir,
+        save_total_limit=1,
+        load_best_model_at_end=True,
+        save_only_model=True,
         logging_first_step=True,
-        logging_steps=args.log_freq, 
-        
+        logging_steps=args.log_freq,       
+        logging_dir=args.save_dir,        
         dataloader_drop_last=True, #CodeT5+ default=True
-        dataloader_num_workers=4, # default = 0, bei 3 gpu und wert=2 = 6 subprocesses for data loading, #CodeT5+ default=4
+        #dataloader_num_workers=4, # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
+        
         local_rank=args.local_rank, # args.local_rank ist default
         #deepspeed=ds_config_file,
         deepspeed=args.deepspeed, # args.deepspeed ist default
         fp16=args.fp16,             # args.fp16 ist default
-        #push_to_hub=False, 
-        
-
     )
 
     trainer = Trainer(
@@ -136,18 +139,22 @@ def run_training(args, model, train_data, tokenizer):
     #print_gpu_utilization()
    
     something = trainer.train()
-    nvidaiprint_summary(something)
-    
-    
-
+    nvidaiprint_summary(something)    
     trainer.save_model() # added by me later: worked with cpu, sql mit 'data_num': 5000 samples
     
     # Evaluate the model on the test dataset   
     finaltest_set = train_data['test']
-    results = trainer.evaluate(eval_dataset=finaltest_set)  
+    
+    evaluation = trainer.evaluate(eval_dataset=finaltest_set)  
     prediction = trainer.predict(test_dataset=finaltest_set)
-    print("results: ", results)
+    print("evaluation: ", evaluation)
     print("prediction: ", prediction)
+
+    with open(os.path.join(args.save_dir, str(str(args.vuln_type) + "_" + str(args.data_num) + "_evaluation_results.json")), "w") as f:
+        json.dump(evaluation, f, indent=4)
+
+    with open(os.path.join(args.save_dir, str(str(args.vuln_type) + "_" + str(args.data_num) + "_prediction_results.json")), "w") as f:
+        json.dump(prediction.metrics, f, indent=4)
 
     if args.local_rank in [0, -1]: 
         final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint")         
@@ -155,9 +162,22 @@ def run_training(args, model, train_data, tokenizer):
         print(f'  ==> Finish training and save to {final_checkpoint_dir}')        
     
     
-    end_time = time.time()
+    #end_time = time.time()
+    #time_elapsed = end_time - start_time
+    #print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
+    end_time = datetime.now()
     time_elapsed = end_time - start_time
-    print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
+    #print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
+    #time_elapsed_formatted = str(datetime.timedelta(seconds=time_elapsed))
+    #print("time_elapsed_formatted: ", time_elapsed_formatted, "\n" )
+
+    # Get days, hours, and minutes from the timedelta object
+    days = time_elapsed.days
+    hours = time_elapsed.seconds // 3600
+    minutes = (time_elapsed.seconds % 3600) // 60
+    # Format the output
+    formatted_time_elapsed = f"Days:{days:02} Hours:{hours:02} Minutes:{minutes:02}"
+    print(f"Time elapsed: {formatted_time_elapsed}")
 
 # copied to load_tokenize_data.py should be imported - not tested yet!!!!
 """def load_tokenize_data(args, tokenizer):      
@@ -206,7 +226,7 @@ def run_training(args, model, train_data, tokenizer):
 def main(args): 
     
     argsdict = vars(args) 
-    #print("Arguments:\n", pprint.pformat(argsdict))
+    print("Arguments:\n", pprint.pformat(argsdict))
     
     with open(os.path.join(args.save_dir, "command.txt"), 'w') as f:
         f.write(pprint.pformat(argsdict))
@@ -262,18 +282,27 @@ if __name__ == "__main__":
     parser.add_argument('--cache-data', default='../cache_data', type=str)
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str) 
 
-    # Training
+    # Training    
+    parser.add_argument('--lr', default=2e-5, type=float) # initial learning rate for AdamW HF: default=5e-5
+    parser.add_argument('--lr_warmup_steps', default=0, type=int) # codet5+ paper: -, codet5+ code: default=200
+    parser.add_argument('--per_device_train_batch_size', default=32, type=int) 
+    parser.add_argument('--per_device_eval_batch_size', default=8, type=int)  # Added for OutOfMem issue, HF: default=8;  neu!!! Reduce when OutOfMem occurs; does not need to have same value as per_device_train_batch_size
+    parser.add_argument('--optimizer', default='adamw_torch', type=str) # HF: default=adamw_torch
     parser.add_argument('--epochs', default=10, type=int) # epochs
-    parser.add_argument('--lr', default=5e-5, type=float) # learning rate
-    parser.add_argument('--lr-warmup-steps', default=200, type=int) # learning rate
-    parser.add_argument('--per_device_train_batch_size', default=1, type=int) 
-    parser.add_argument('--grad-acc-steps', default=4, type=int) # default=4, instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
+    parser.add_argument('--weight_decay', default=0.1, type=int) # HF: default=0, codet5+ code: default=0.05
+    parser.add_argument('--grad_acc_steps', default=1, type=int) # codet5+ code: default=4; instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
+    
+    # Tokenization
+    #parser.add_argument('--max_source_len', default=320, type=int) # codet5+ code: default=320
+    #parser.add_argument('--max_target_len', default=128, type=int) # codet5+ code: default=128
+   
+    # GPU / Speeding up
     parser.add_argument('--local_rank', default=-1, type=int) # default=-1, irgendwas mit distributed training
     parser.add_argument('--deepspeed', default=None, type=str) # interacion with deepspeed library default = None, ("deepspeed_config.json",)
     parser.add_argument('--fp16', default=False, action='store_true') # default=False, action='store_true', with mixed precision for training acceleration
 
     # Logging and stuff
-    parser.add_argument('--save-dir', default="../saved_models/", type=str)
+    parser.add_argument('--save-dir', default="../saved_models", type=str)
     parser.add_argument('--log-freq', default=10, type=int) #default=10
     parser.add_argument('--save-freq', default=500, type=int) # default=500 
 
