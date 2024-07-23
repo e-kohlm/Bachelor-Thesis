@@ -59,21 +59,13 @@ def print_summary(result):
 
 
 
-def run_training(args, model, train_data, tokenizer):    
-    
+def run_training(args, model, train_data, tokenizer):        
 
-    print_gpu_utilization()
-    #start_time = time.time() 
-    start_time = datetime.now()
-    print("start_time: ", start_time)
+    print_gpu_utilization()    
+    start_time = datetime.now() 
 
-    #accuracy = evaluate.load("accuracy")
-    #f1 = evaluate.load("f1")
-    #precision = evaluate.load("precision")
-    #recall = evaluate.load("recall")    
-
-
-    def compute_metrics(eval_pred):        
+    def compute_metrics(eval_pred):       
+        print("\nGEHT ES HIER KRACHEN???)") 
         predictions, labels = eval_pred 
         tuple_element_1 = np.asarray(predictions[0])
         tuple_element_2 = np.asarray(predictions[1])
@@ -114,7 +106,8 @@ def run_training(args, model, train_data, tokenizer):
         logging_dir=args.save_dir,        
         dataloader_drop_last=True, #CodeT5+ default=True
         #dataloader_num_workers=4, # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
-        
+        #auto_find_batch_size=True  #NEW!!!!
+
         local_rank=args.local_rank, # args.local_rank ist default
         #deepspeed=ds_config_file,
         deepspeed=args.deepspeed, # args.deepspeed ist default
@@ -138,9 +131,9 @@ def run_training(args, model, train_data, tokenizer):
 
     #print_gpu_utilization()
    
-    something = trainer.train()
-    nvidaiprint_summary(something)    
-    trainer.save_model() # added by me later: worked with cpu, sql mit 'data_num': 5000 samples
+    result = trainer.train()
+    print_summary(result)    
+    trainer.save_model() 
     
     # Evaluate the model on the test dataset   
     finaltest_set = train_data['test']
@@ -161,67 +154,15 @@ def run_training(args, model, train_data, tokenizer):
         model.save_pretrained(final_checkpoint_dir)
         print(f'  ==> Finish training and save to {final_checkpoint_dir}')        
     
-    
-    #end_time = time.time()
-    #time_elapsed = end_time - start_time
-    #print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
+        
     end_time = datetime.now()
-    time_elapsed = end_time - start_time
-    #print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
-    #time_elapsed_formatted = str(datetime.timedelta(seconds=time_elapsed))
-    #print("time_elapsed_formatted: ", time_elapsed_formatted, "\n" )
-
-    # Get days, hours, and minutes from the timedelta object
+    time_elapsed = end_time - start_time  
     days = time_elapsed.days
     hours = time_elapsed.seconds // 3600
-    minutes = (time_elapsed.seconds % 3600) // 60
-    # Format the output
+    minutes = (time_elapsed.seconds % 3600) // 60    
     formatted_time_elapsed = f"Days:{days:02} Hours:{hours:02} Minutes:{minutes:02}"
     print(f"Time elapsed: {formatted_time_elapsed}")
 
-# copied to load_tokenize_data.py should be imported - not tested yet!!!!
-"""def load_tokenize_data(args, tokenizer):      
-    vulnerability_type = args.vuln_type
-    # Check if train_data already exists in cache_data/
-    if os.path.exists(args.cache_data):
-        train_data = load_from_disk(args.cache_data)
-        print(f'\n  ==> Loaded {len(train_data)} samples')
-        return train_data
-    # Load data
-    else: 
-        file_path = "../VUDENC_data/"
-        training_set = vulnerability_type + "_dataset-TRAINING"
-        validation_set = vulnerability_type + "_dataset-VALIDATION"
-        test_set = vulnerability_type + "_dataset-TESTING"
-
-
-        data_files = {"train": file_path + training_set, "validation": file_path + validation_set, "test": file_path + test_set}
-        datasets = load_dataset("json", data_files=data_files)           
-
-        #data_collator = DataCollatorWithPadding(tokenizer=tokenizer) #neu
-
-        def preprocess_function(examples):         
-                 
-            #return tokenizer(examples["code"], truncation=True, max_length=tokenizer.model_max_length, padding='max_length')
-            return tokenizer(examples["code"], truncation=True, padding=True) #padding: True = pad to the longest sequence in the batch
-                                                                              #truncation: True = truncate to the maximum length accepted by the model if no max_length is provided                                                                                                                                              
-        train_data = datasets.map(
-            preprocess_function,
-            #data_collator, #neu
-            batched=True,            
-            #num_proc=16,           
-        )    
-
-        train_data = train_data.remove_columns(["snippet_id"])
-        train_data = train_data.rename_column("label", "labels")
-        train_data.set_format("torch")
-        #print("train_data: ", train_data)         
-
-        print(f'\n  ==> Tokenized {len(train_data)} samples')        
-        train_data.save_to_disk(args.cache_data)
-        print(f'  ==> Saved to {args.cache_data}')
-        return train_data
-"""
 
 def main(args): 
     
