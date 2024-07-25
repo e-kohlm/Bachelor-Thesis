@@ -34,14 +34,14 @@ Each file contains code snippets with a label (0 = not vulnerable, 1 = vulnerabl
 
 
 
-## Fine-tuning
+## Finetuning
 
-The script `fine_tuning.py` can be called with certain arguments, specified in the file. They have not all been tested yet, only the ones below.  
+The script `finetuning.py` can be called with certain arguments, specified in the file. They have not all been tested yet, only the ones below.  
 
 Run the script from `scripts/`.
 E.g. for testing it can determine the number of epochs and number of samples like this:  
 
-`python fine_tuning.py --epochs=2 --data-num=50`  
+`python finetuning.py --epochs=2 --data-num=50`  
 
 The number of samples used should not be smaller than 50, if it is, it crashes along the way. 
 
