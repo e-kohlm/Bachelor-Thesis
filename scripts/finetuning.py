@@ -18,9 +18,8 @@ import torch
 import numpy as np
 
 
-def run_training(args, model, train_data, tokenizer):    
-    
-    #start_time = time.time()
+def run_training(args, model, train_data, tokenizer):        
+   
     start_time = datetime.now()
     print("start_time: ", start_time)
 
@@ -102,23 +101,14 @@ def run_training(args, model, train_data, tokenizer):
         final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint")   
         model.save_pretrained(final_checkpoint_dir)
         print(f'  ==> Finish training and save to {final_checkpoint_dir}')
-    
-    
-    #end_time = time.time()
+      
+   
     end_time = datetime.now()
-    time_elapsed = end_time - start_time
-    #print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)),"\n" )
-    #time_elapsed_formatted = str(datetime.timedelta(seconds=time_elapsed))
-    #print("time_elapsed_formatted: ", time_elapsed_formatted, "\n" )
-
-    # Get days, hours, and minutes from the timedelta object
+    time_elapsed = end_time - start_time  
     days = time_elapsed.days
     hours = time_elapsed.seconds // 3600
     minutes = (time_elapsed.seconds % 3600) // 60
-
-    # Format the output
     formatted_time_elapsed = f"Days:{days:02} Hours:{hours:02} Minutes:{minutes:02}"
-
     print(f"Time elapsed: {formatted_time_elapsed}")
 
 
