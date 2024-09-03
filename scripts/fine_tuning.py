@@ -1,11 +1,9 @@
 import os
-#os.environ["DS_SKIP_CUDA_CHECK"] = "1" #because of BUG: https://github.com/microsoft/DeepSpeed/issues/3223
-#import time
 from datetime import datetime, timedelta
 import math
 import pprint
 import argparse
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset, load_from_disk # brauch ich doch nicht, oder?
 from transformers import (AutoTokenizer,
                         TrainingArguments,
                         Trainer,                          
@@ -59,10 +57,13 @@ def print_summary(result):
 
 
 
-def run_training(args, model, train_data, tokenizer):        
+def run_training(args, model, train_data, tokenizer, device):        
 
-    print_gpu_utilization()    
-    start_time = datetime.now() 
+    if device == "cuda":
+        print_gpu_utilization()    
+    
+    start_time = datetime.now()
+    print("start_time: ", start_time)
 
     def compute_metrics(eval_pred):       
         print("\nGEHT ES HIER KRACHEN???)") 
@@ -124,12 +125,12 @@ def run_training(args, model, train_data, tokenizer):
 
     ) 
 
-    allocated_memory = torch.cuda.memory_allocated()
-    print(f"\n  Current GPU memory allocated: {allocated_memory / 1024**3:.2f} GB")  # Convert bytes to GB for readability
-    memory_reserved = torch.cuda.memory_reserved()
-    print(f"  GPU memory reserved: {memory_reserved / 1024**3:.2f} GB\n")
-
-    #print_gpu_utilization()
+    if device == "cuda":
+        allocated_memory = torch.cuda.memory_allocated()
+        print(f"\n  Current GPU memory allocated: {allocated_memory / 1024**3:.2f} GB")  # Convert bytes to GB for readability
+        memory_reserved = torch.cuda.memory_reserved()
+        print(f"  GPU memory reserved: {memory_reserved / 1024**3:.2f} GB\n")
+        #print_gpu_utilization()
    
     result = trainer.train()
     print_summary(result)    
@@ -159,7 +160,7 @@ def run_training(args, model, train_data, tokenizer):
     time_elapsed = end_time - start_time  
     days = time_elapsed.days
     hours = time_elapsed.seconds // 3600
-    minutes = (time_elapsed.seconds % 3600) // 60    
+    minutes = (time_elapsed.seconds % 3600) // 60
     formatted_time_elapsed = f"Days:{days:02} Hours:{hours:02} Minutes:{minutes:02}"
     print(f"Time elapsed: {formatted_time_elapsed}")
 
@@ -207,13 +208,14 @@ def main(args):
                                                         num_labels=2,
                                                         id2label=id2label,
                                                         label2id=label2id).to(device)
-    print("After model loaded: ")
-    print_gpu_utilization()                                                        
+    if device == "cuda":
+        print("After model loaded: ")
+        print_gpu_utilization()                                                        
     
                                                          
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
 
-    run_training(args, model, train_data, tokenizer=tokenizer)
+    run_training(args=args, model=model, train_data=train_data, tokenizer=tokenizer, device=device)
 
 
 if __name__ == "__main__": 

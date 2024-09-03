@@ -1,8 +1,11 @@
-### command fine-tuning
-`nice -n 19 python3 fine_tuning.py --vuln_type=sql  --cache_data=../cache_data/sql --save_dir=../saved_models/sql --data_num=20000`
+### command finetuning
+`nice -n 19 python3 finetuning.py --vuln_type=sql  --cache_data=../cache_data/sql --save_dir=../saved_models/sql --data_num=20000`
 
 ### command gpu_fine-tuning
-`nice -n 19 python3 gpu_fine_tuning.py --vuln_type=sql  --cache_data=../cache_data/sql --save_dir=../saved_models/sql --per_device_train_batch_size=1 --per_device_eval_batch_size=1`
+nice -n 19 python3 gpu_fine_tuning.py --vuln_type=path_disclosure  --cache_data=../cache_data/path_disclosure --save_dir=../saved_models/path_disclosure_770 --per_device_train_batch_size=1 --per_device_eval_batch_size=1 --epochs=15 --data_num=20000 --load=Salesforce/codet5p-770m
+
+
+`nice -n 19 python3 gpu_fine_tuning.py --vuln_type=open_redirect  --cache_data=../cache_data/open_redirect --save_dir=../saved_models/gpu_open_redirect_770 --per_device_train_batch_size=1 --per_device_eval_batch_size=1 --epochs=15 --data_num=20000 --load=Salesforce/codet5p-770m`
 
 ## hyperparameter search
 `nice -n 19 python3 hyperparameter_search.py --vuln_type=xss --data_num=20000 --n_trials=1 --cache_data=../cache_data/xss`
