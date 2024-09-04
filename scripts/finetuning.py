@@ -3,30 +3,20 @@ from datetime import datetime, timedelta
 import math
 import pprint
 import argparse
-from datasets import load_dataset, load_from_disk # brauch ich doch nicht, oder?
+#from datasets import load_dataset, load_from_disk # brauch ich doch nicht, oder?
 from transformers import (AutoTokenizer,
                         TrainingArguments,
-                        Trainer,                          
-                        #pipeline,
-                        #DataCollatorWithPadding,
-                        AutoModelForSequenceClassification,
-                        #logging
+                        Trainer, 
+                        AutoModelForSequenceClassification
                         )
 from load_tokenize_data import load_tokenize_data
 from pynvml import *
 from pynvml.smi import nvidia_smi
-#import deepspeed
-#from transformers.integrations import HfDeepSpeedConfig
-#from accelerate import Accelerator
 import json
 import evaluate
 import torch
 import numpy as np
-#import optuna
-#from mpi4py import MPI
-#os.environ['DS_SKIP_CUDA_CHECK']="1"
 
-#logging.set_verbosity_error()
 
 def print_gpu_utilization():
     nvmlInit()
@@ -72,11 +62,7 @@ def run_training(args, model, train_data, tokenizer, device):
         tuple_element_2 = np.asarray(predictions[1])
         predictions = np.argmax(tuple_element_1, axis=1)
         clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall"])    
-        return clf_metrics.compute(predictions=predictions, references=labels)
-    
-    # Load DeepSpeed configuration
-    #ds_config_file = '../deepspeed_config.json'
-    #hf_deepspeed_config = HfDeepSpeedConfig(ds_config_file)
+        return clf_metrics.compute(predictions=predictions, references=labels)    
 
 
     training_args = TrainingArguments(              
@@ -106,13 +92,12 @@ def run_training(args, model, train_data, tokenizer, device):
         logging_steps=args.log_freq,       
         logging_dir=args.save_dir,        
         dataloader_drop_last=True, #CodeT5+ default=True
-        #dataloader_num_workers=4, # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
+        #dataloader_num_workers=4, # Number of subprocesses to use for data loading, default=0, 0 means that theh data will be loaded in the main process.
         #auto_find_batch_size=True  #NEW!!!!
 
-        local_rank=args.local_rank, # args.local_rank ist default
-        #deepspeed=ds_config_file,
-        deepspeed=args.deepspeed, # args.deepspeed ist default
-        fp16=args.fp16,             # args.fp16 ist default
+        local_rank=args.local_rank,  
+        deepspeed=args.deepspeed, 
+        fp16=args.fp16,
     )
 
     trainer = Trainer(
@@ -171,20 +156,13 @@ def main(args):
     print("Arguments:\n", pprint.pformat(argsdict))
     
     with open(os.path.join(args.save_dir, "command.txt"), 'w') as f:
-        f.write(pprint.pformat(argsdict))
- 
-    #tokenizer_max_len = 512                                        # mit order ohne das hat keine Auswirkung auf speed
-    #tokenizer_config = {'max_len': tokenizer_max_len}    
-    tokenizer = AutoTokenizer.from_pretrained(args.load) #, **tokenizer_config)
-    #print("tokenizer: ", tokenizer)
+        f.write(pprint.pformat(argsdict)) 
+    
+    tokenizer = AutoTokenizer.from_pretrained(args.load)
+    train_data = load_tokenize_data(args=args, tokenizer=tokenizer)  
+    print("train_data: ", train_data)    
 
-    train_data = load_tokenize_data(args, tokenizer=tokenizer)  
-    print("train_data: ", train_data)
-
-    print("Before model loaded: ")
-    print_gpu_utilization()
-
-    # Check if an argument to test a smaller sample of data was given
+    # Check if argument to test a smaller sample of data was given
     if args.data_num != -1:             
         train_data['train'] = [train_data['train'][i]for i in range(math.ceil(args.data_num * 70 /100))]        
         train_data['validation'] = [train_data['validation'][i]for i in range(math.ceil(args.data_num * 15 / 100))]
@@ -192,18 +170,14 @@ def main(args):
     
  
     id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}   
-    label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1} 
-    #accelerator = Accelerator()
-    #device = accelerator.device
+    label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}
 
+    device = args.device
+    print("device: ", device)
+    if device == "cuda":
+        print("Before model loaded: ")
+        print_gpu_utilization()
 
-    
-    #device = torch.device("cuda:1") # wenn die 2 anderen in Betrieb, dann aber auch oben bei data_loader ändern
-
-
-
-
-    device = "cuda" # "cuda" for GPU usage or "cpu" for CPU usage     
     model = AutoModelForSequenceClassification.from_pretrained(args.load, #full xss heute nur 147 und sql nur 149 Stunden???
                                                         num_labels=2,
                                                         id2label=id2label,
@@ -224,33 +198,33 @@ if __name__ == "__main__":
     parser.add_argument('--data_num', default=-1, type=int)  
     parser.add_argument('--cache_data', default='../cache_data', type=str)
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str) 
+    parser.add_argument('--device', default='cuda', type=str)  # "cuda" for GPU usage or "cpu" for CPU usage  
 
-    # Training    
+    # Training hyperparameters (defaults=baseline model based on Wang-Le-Gotmare-etal 2023 CodeT5+)   
     parser.add_argument('--lr', default=2e-5, type=float) # initial learning rate for AdamW HF: default=5e-5
     parser.add_argument('--lr_warmup_steps', default=0, type=int) # codet5+ paper: -, codet5+ code: default=200
-    parser.add_argument('--per_device_train_batch_size', default=32, type=int) 
+    parser.add_argument('--per_device_train_batch_size', default=32, type=int) # HF: default=8 
     parser.add_argument('--per_device_eval_batch_size', default=8, type=int)  # Added for OutOfMem issue, HF: default=8;  neu!!! Reduce when OutOfMem occurs; does not need to have same value as per_device_train_batch_size
     parser.add_argument('--optimizer', default='adamw_torch', type=str) # HF: default=adamw_torch
-    parser.add_argument('--epochs', default=10, type=int) # epochs
+    parser.add_argument('--epochs', default=10, type=int) # codet5+ code: default=4, HF: default=3
     parser.add_argument('--weight_decay', default=0.1, type=int) # HF: default=0, codet5+ code: default=0.05
     parser.add_argument('--grad_acc_steps', default=1, type=int) # codet5+ code: default=4; instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
-    
+        
     # Tokenization
     #parser.add_argument('--max_source_len', default=320, type=int) # codet5+ code: default=320
     #parser.add_argument('--max_target_len', default=128, type=int) # codet5+ code: default=128
-   
+    
     # GPU / Speeding up
-    parser.add_argument('--local_rank', default=-1, type=int) # default=-1, irgendwas mit distributed training
-    parser.add_argument('--deepspeed', default=None, type=str) # interacion with deepspeed library default = None, ("deepspeed_config.json",)
-    parser.add_argument('--fp16', default=False, action='store_true') # default=False, action='store_true', with mixed precision for training acceleration
+    parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
+    parser.add_argument('--deepspeed', default=None, type=str) # interaction with deepspeed library, it is experimental
+    parser.add_argument('--fp16', default=False, action='store_true') # with mixed precision for training acceleration
 
-    # Logging and stuff
-    parser.add_argument('--save_dir', default="../saved_models", type=str)
-    parser.add_argument('--log_freq', default=10, type=int) #default=10
-    parser.add_argument('--save_freq', default=500, type=int) # default=500 
+    # Logging
+    parser.add_argument('--save_dir', default="../saved_models/", type=str)
+    parser.add_argument('--log_freq', default=10, type=int)
+    parser.add_argument('--save_freq', default=500, type=int)
 
     args = parser.parse_args()
     os.makedirs(args.save_dir, exist_ok=True)
 
     main(args)
-    
