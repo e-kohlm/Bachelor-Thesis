@@ -32,13 +32,14 @@ Each file contains code snippets with a label (0 = not vulnerable, 1 = vulnerabl
 
 
 
-
-
 ## Finetuning
+Run the script from `scripts/`.   
+On a GPU the job is run with Slurm, so the arguments are specified in the script `pytorch_gpu.sh`.   
+To start a job on a GPU use the command `sbatch pytorch_gpu.sh`.   
 
-The script `finetuning.py` can be called with certain arguments, specified in the file. They have not all been tested yet, only the ones below.  
+If a CPU is used the script `finetuning.py` needs to be called directly and the default device needs to be changed by passing the argument `--device=cpu`. 
+The arguments with which finetuning.py can be called are specified in the file.
 
-Run the script from `scripts/`.
 E.g. for testing it can determine the number of epochs and number of samples like this:  
 
 `python finetuning.py --epochs=2 --data-num=50`  
