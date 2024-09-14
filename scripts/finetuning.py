@@ -1,41 +1,18 @@
 import os
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 from datetime import datetime, timedelta
 import math
 import pprint
 import argparse
-#from datasets import load_dataset, load_from_disk # brauch ich doch nicht, oder?
-from transformers import (AutoTokenizer,
-                        TrainingArguments,
-                        Trainer, 
-                        AutoModelForSequenceClassification
-                        )
+from transformers import AutoTokenizer, TrainingArguments, Trainer, AutoModelForSequenceClassification                        
 from load_tokenize_data import load_tokenize_data
-from pynvml import *
-from pynvml.smi import nvidia_smi
+from gpu_test import print_gpu_utilization
+#from pynvml import *
+#from pynvml.smi import nvidia_smi
 import json
 import evaluate
 import torch
 import numpy as np
-
-
-def print_gpu_utilization():
-    nvmlInit()
-    print("Driver Version:", nvmlSystemGetDriverVersion())
-    deviceCount = nvmlDeviceGetCount()
-    
-    for i in range(deviceCount):
-        handle = nvmlDeviceGetHandleByIndex(i)
-        print("Device", i, ":", nvmlDeviceGetName(handle))
-
-    handle = nvmlDeviceGetHandleByIndex(0)
-    info = nvmlDeviceGetMemoryInfo(handle)
-    print(f"  GPU memory occupied: {info.used//1024**2} MB.")
-    memory_reserved = torch.cuda.memory_reserved()
-    print(f"GPU memory reserved: {memory_reserved / 1024**3:.2f} GB")
-
-    nvsmi = nvidia_smi.getInstance()
-    device_query = nvsmi.DeviceQuery('memory.free, memory.total')
-    print(f" Device query:{device_query}")
 
 
 def print_summary(result):
@@ -44,19 +21,14 @@ def print_summary(result):
     print_gpu_utilization()
 
 
-
-
-
-def run_training(args, model, train_data, tokenizer, device):        
-
+def run_training(args, model, train_data, tokenizer, device): 
     if device == "cuda":
+        print("333")
         print_gpu_utilization()    
     
-    start_time = datetime.now()
-    print("start_time: ", start_time)
+    start_time = datetime.now()    
 
-    def compute_metrics(eval_pred):       
-        print("\nGEHT ES HIER KRACHEN???)") 
+    def compute_metrics(eval_pred):  
         predictions, labels = eval_pred 
         tuple_element_1 = np.asarray(predictions[0])
         tuple_element_2 = np.asarray(predictions[1])
@@ -78,22 +50,23 @@ def run_training(args, model, train_data, tokenizer, device):
 
         learning_rate=args.lr,
         warmup_steps=args.lr_warmup_steps,
-        per_device_train_batch_size=args.per_device_train_batch_size,
+        per_device_train_batch_size=args.per_device_train_batch_size,        
         per_device_eval_batch_size=args.per_device_eval_batch_size,
         optim=args.optimizer,
         num_train_epochs=args.epochs,
         weight_decay=args.weight_decay,
         gradient_accumulation_steps=args.grad_acc_steps,
+        eval_accumulation_steps=args.eval_acc_steps, #new
         
         save_total_limit=1,
-        load_best_model_at_end=True,
+        #load_best_model_at_end=True,  #neu
         save_only_model=True,
         logging_first_step=True,
         logging_steps=args.log_freq,       
         logging_dir=args.save_dir,        
         dataloader_drop_last=True, #CodeT5+ default=True
         #dataloader_num_workers=4, # Number of subprocesses to use for data loading, default=0, 0 means that theh data will be loaded in the main process.
-        #auto_find_batch_size=True  #NEW!!!!
+        auto_find_batch_size=False,  #NEW!!!!
 
         local_rank=args.local_rank,  
         deepspeed=args.deepspeed, 
@@ -107,15 +80,11 @@ def run_training(args, model, train_data, tokenizer, device):
         eval_dataset=train_data["validation"],        
         tokenizer=tokenizer,        
         compute_metrics=compute_metrics,       
-
     ) 
 
-    if device == "cuda":
-        allocated_memory = torch.cuda.memory_allocated()
-        print(f"\n  Current GPU memory allocated: {allocated_memory / 1024**3:.2f} GB")  # Convert bytes to GB for readability
-        memory_reserved = torch.cuda.memory_reserved()
-        print(f"  GPU memory reserved: {memory_reserved / 1024**3:.2f} GB\n")
-        #print_gpu_utilization()
+    if device == "cuda":   
+        print("444")     
+        print_gpu_utilization()
    
     result = trainer.train()
     print_summary(result)    
@@ -150,8 +119,7 @@ def run_training(args, model, train_data, tokenizer, device):
     print(f"Time elapsed: {formatted_time_elapsed}")
 
 
-def main(args): 
-    
+def main(args):     
     argsdict = vars(args) 
     print("Arguments:\n", pprint.pformat(argsdict))
     
@@ -175,14 +143,16 @@ def main(args):
     device = args.device
     print("device: ", device)
     if device == "cuda":
+        print("111")
         print("Before model loaded: ")
         print_gpu_utilization()
 
-    model = AutoModelForSequenceClassification.from_pretrained(args.load, #full xss heute nur 147 und sql nur 149 Stunden???
+    model = AutoModelForSequenceClassification.from_pretrained(args.load,
                                                         num_labels=2,
                                                         id2label=id2label,
                                                         label2id=label2id).to(device)
     if device == "cuda":
+        print("222")
         print("After model loaded: ")
         print_gpu_utilization()                                                        
     
@@ -209,7 +179,8 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', default=10, type=int) # codet5+ code: default=4, HF: default=3
     parser.add_argument('--weight_decay', default=0.1, type=int) # HF: default=0, codet5+ code: default=0.05
     parser.add_argument('--grad_acc_steps', default=1, type=int) # codet5+ code: default=4; instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
-        
+    parser.add_argument('--eval_acc_steps', default=8, type=int) #new
+
     # Tokenization
     #parser.add_argument('--max_source_len', default=320, type=int) # codet5+ code: default=320
     #parser.add_argument('--max_target_len', default=128, type=int) # codet5+ code: default=128
@@ -228,3 +199,4 @@ if __name__ == "__main__":
     os.makedirs(args.save_dir, exist_ok=True)
 
     main(args)
+    
