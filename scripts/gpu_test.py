@@ -2,11 +2,9 @@ from pynvml import *
 from pynvml.smi import nvidia_smi
 import torch
 from transformers import AutoModelForSequenceClassification
-from transformers import TrainingArguments, Trainer#, logging
+from transformers import TrainingArguments, Trainer
 from datasets import load_dataset, load_from_disk
 
-
-#logging.set_verbosity_error()
 
 def print_gpu_utilization():
     nvmlInit()
