@@ -28,15 +28,15 @@ Each file contains code snippets with a label (0 = not vulnerable, 1 = vulnerabl
 
 # Training
 Scripts for hyperparameter search and finetuning need to run from `scripts/`. All training scripts can be called with different arguments, you can find them at the end of each script.  
-Default device is a GPU, but it can be run on a CPU as well, with the argument `--device=cpu`.
-The default model is  Salesforce/codet5p-220m, which can be changed with the argument `--load=Salesforce/codet5p-770m`.   
+Default device is a GPU, but it can be run on a CPU as well, with the argument `--device`.   
+The default model is  Salesforce/codet5p-220m, which can be changed with the argument `--load`.   
 Default vulnerability type is sql, it can be changed with `--vuln_type`.
 
 ## Hyperparameter Search
 The arguments with which finetuning.py can be called are specified in the file.   
 To find the optimal hyperparameters for the models run
 
-`hyperparameters_search.py`   
+`python hyperparameters_search.py`   
 
 
 
