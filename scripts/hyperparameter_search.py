@@ -9,12 +9,21 @@ import argparse
 import math
 import pprint
 from load_tokenize_data import load_tokenize_data
+from gpu_test import print_gpu_utilization
 import numpy as np
 import evaluate
+import json
 
 
 def run_search(args, train_data, tokenizer):
     start_time = time.time()
+
+    device = args.device
+    print("device: ", device)
+    if device == "cuda":
+        print("111")
+        print("Before model loaded: ")
+        print_gpu_utilization()
 
     def model_init(trial):
         id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}
@@ -26,7 +35,7 @@ def run_search(args, train_data, tokenizer):
                                                             id2label=id2label,
                                                             label2id=label2id),  """
         # Probieren:
-        device = "cpu"  # "cuda" for GPU usage or "cpu" for CPU usage
+        #device = "cpu"  # "cuda" for GPU usage or "cpu" for CPU usage
         model = AutoModelForSequenceClassification.from_pretrained(model_name,
                                                                    num_labels=2,
                                                                    id2label=id2label,
@@ -74,13 +83,14 @@ def run_search(args, train_data, tokenizer):
 
         save_total_limit=1,
         load_best_model_at_end=True,
-        save_only_model=True,
+        save_only_model=False, #NEW = default, allows resume training
         logging_first_step=True,
         logging_steps=args.log_freq,
         logging_dir=args.save_dir,
         dataloader_drop_last=True,
         #dataloader_num_workers=4, # Number of subprocesses to use for data loading, default=0, 0 means that teh data will be loaded in the main process.
-                
+        auto_find_batch_size=True,  #mal sehen ob was geht hier ohne das
+
         local_rank=args.local_rank,
         deepspeed=args.deepspeed,
         fp16=args.fp16,  
@@ -111,9 +121,17 @@ def run_search(args, train_data, tokenizer):
     )
 
     print("\n", best_run)
-    end_time = time.time()
-    time_elapsed = end_time - start_time
-    print("time_elapsed: ", time.strftime("%H:%M:%S", time.gmtime(time_elapsed)), "\n")
+
+    with open(os.path.join(args.save_dir, str(str(args.vuln_type) + "_" + str(args.data_num) + "_best_run.json")), "w") as f:
+        json.dump(best_run.metrics, f, indent=4)
+    
+    end_time = datetime.now()    
+    time_elapsed = end_time - start_time  
+    days = time_elapsed.days
+    hours = time_elapsed.seconds // 3600
+    minutes = (time_elapsed.seconds % 3600) // 60
+    formatted_time_elapsed = f"Days:{days:02} Hours:{hours:02} Minutes:{minutes:02}"
+    print(f"Time elapsed: {formatted_time_elapsed}")
 
 
 def main(args):
@@ -142,6 +160,7 @@ if __name__ == "__main__":
     parser.add_argument('--data_num', default=-1, type=int)
     parser.add_argument('--cache_data', default='cache_data/', type=str)
     parser.add_argument('--load', default='Salesforce/codet5p-220m', type=str)
+    parser.add_argument('--device', default="cuda", type=str)  # "cuda" for GPU usage or "cpu" for CPU usage  
 
     # Tokenization
     #parser.add_argument('--max_source_len', default=320, type=int)
