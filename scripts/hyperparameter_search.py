@@ -58,18 +58,32 @@ def run_search(args, train_data, tokenizer):
         return clf_metrics.compute(predictions=predictions, references=labels)
         #return metric.compute(predictions=predictions, references=labels) #neu, ich bekomme also nur f1 zurück
 
-    def optuna_hp_space(trial):
+    # Initial Search Space
+    """def optuna_hp_space(trial):
         print(f'\n  ==> Started trial {trial.number}')
         return {
             "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-3, log=True),
             "warmup_steps": trial.suggest_int('warmup_steps', 0, 500),
             "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size",
                                                                      [8, 16, 32, 64, 128, 256, 1024]),                    
-            "optim": trial.suggest_categorical("optim", ["adamw_torch", "rmsprop"]),  # LAMB probably only on GPU?
+            "optim": trial.suggest_categorical("optim", ["adamw_torch", "rmsprop"]),
             "num_train_epochs": trial.suggest_int('epochs', 1, 50),
             "weight_decay": trial.suggest_float("weight_decay", 0.05, 0.1, log=True),  #default=0
             "gradient_accumulation_steps": trial.suggest_int('gradient_accumulation_steps', 1, 8),
-        }    
+        } """   
+
+    # 1. Narrowed Search Space
+    def optuna_hp_space(trial):
+        print(f'\n  ==> Started trial {trial.number}')
+        return {
+            "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-3, log=True),
+            "warmup_steps": trial.suggest_int('warmup_steps', 0, 500),
+            "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size", [8, 16, 32, 64]),                    
+            "optim": trial.suggest_categorical("optim", ["adamw_torch"]),
+            "num_train_epochs": trial.suggest_int('epochs', 10, 20),
+            "weight_decay": trial.suggest_float("weight_decay", 0.05, 0.1, log=True),  #default=0
+            "gradient_accumulation_steps": trial.suggest_int('gradient_accumulation_steps', 1, 8),
+        }     
 
     training_args = TrainingArguments(
         output_dir=args.save_dir,
