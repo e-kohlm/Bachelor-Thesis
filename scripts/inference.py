@@ -2,7 +2,7 @@ from transformers import pipeline
 import json
 from VUDENC import utils
 
-#F IXME checkpoint hardgecoded und final_checkpoint missing
+#FIXME checkpoint hardgecoded
 classifier_cp_1 = pipeline(task="text-classification", model="saved_models/summarize_python" + "/checkpoint-860") 
 #classifier_f_cp = pipeline(task="text-classification", model=args.save_dir + "/final_checkpoint") # Dateien fehlen
 

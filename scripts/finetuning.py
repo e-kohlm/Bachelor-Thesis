@@ -21,7 +21,6 @@ def print_summary(result):
 
 def run_training(args, model, train_data, tokenizer, device): 
     if device == "cuda":
-        print("333")
         print_gpu_utilization()    
     
     start_time = datetime.now()    
@@ -62,7 +61,7 @@ def run_training(args, model, train_data, tokenizer, device):
         logging_first_step=True,
         logging_steps=args.log_freq,       
         logging_dir=args.save_dir,        
-        dataloader_drop_last=True, #CodeT5+ default=True        
+        dataloader_drop_last=True,
         auto_find_batch_size=True,
 
         local_rank=args.local_rank,  
@@ -79,8 +78,7 @@ def run_training(args, model, train_data, tokenizer, device):
         compute_metrics=compute_metrics,       
     ) 
 
-    if device == "cuda":   
-        print("444")     
+    if device == "cuda":
         print_gpu_utilization()
    
     result = trainer.train()
@@ -96,8 +94,7 @@ def run_training(args, model, train_data, tokenizer, device):
     if args.local_rank in [0, -1]: 
         final_checkpoint_dir = os.path.join(args.save_dir, "final_checkpoint")         
         model.save_pretrained(final_checkpoint_dir)
-        print(f'  ==> Finish training and save to {final_checkpoint_dir}')        
-    
+        print(f'  ==> Finish training and save to {final_checkpoint_dir}')
         
     end_time = datetime.now()
     time_elapsed = end_time - start_time  
@@ -123,16 +120,13 @@ def main(args):
     if args.data_num != -1:             
         train_data['train'] = [train_data['train'][i]for i in range(math.ceil(args.data_num * 70 /100))]        
         train_data['validation'] = [train_data['validation'][i]for i in range(math.ceil(args.data_num * 15 / 100))]
-        train_data['test'] = [train_data['test'][i]for i in range(math.ceil(args.data_num * 15 / 100))]       
-    
+        train_data['test'] = [train_data['test'][i]for i in range(math.ceil(args.data_num * 15 / 100))]
  
     id2label = {0: "NOT VULNERABLE", 1: "VULNERABLE"}   
     label2id = {"NOT VULNERABLE": 0, "VULNERABLE": 1}
 
     device = args.device
-    print("device: ", device)
     if device == "cuda":
-        print("111")
         print("Before model loaded: ")
         print_gpu_utilization()
 
@@ -140,11 +134,10 @@ def main(args):
                                                         num_labels=2,
                                                         id2label=id2label,
                                                         label2id=label2id).to(device)
+
     if device == "cuda":
-        print("222")
         print("After model loaded: ")
-        print_gpu_utilization()                                                        
-    
+        print_gpu_utilization()
                                                          
     print(f"\n  ==> Loaded model from {args.load}, model size {model.num_parameters()}")
 
@@ -160,24 +153,20 @@ if __name__ == "__main__":
     parser.add_argument('--device', default="cuda", type=str)  # "cuda" for GPU usage or "cpu" for CPU usage  
 
     # Training hyperparameters (defaults=baseline model based on Wang-Le-Gotmare-etal 2023 CodeT5+)   
-    parser.add_argument('--lr', default=2e-5, type=float) # initial learning rate for AdamW HF: default=5e-5
-    parser.add_argument('--lr_warmup_steps', default=0, type=int) # codet5+ paper: -, codet5+ code: default=200
-    parser.add_argument('--per_device_train_batch_size', default=32, type=int) # HF: default=8 
-    parser.add_argument('--per_device_eval_batch_size', default=8, type=int)  # Added for OutOfMem issue, HF: default=8;  neu!!! Reduce when OutOfMem occurs; does not need to have same value as per_device_train_batch_size
-    parser.add_argument('--optimizer', default="adamw_torch", type=str) # HF: default=adamw_torch
-    parser.add_argument('--epochs', default=10, type=int) # codet5+ code: default=4, HF: default=3
-    parser.add_argument('--weight_decay', default=0.1, type=int) # HF: default=0, codet5+ code: default=0.05
-    parser.add_argument('--grad_acc_steps', default=1, type=int) # codet5+ code: default=4; instead of updating the model parameters after processing each batch, macht also normale batch size obsolet
-    parser.add_argument('--eval_acc_steps', default=8, type=int) #new
-
-    # Tokenization
-    #parser.add_argument('--max_source_len', default=320, type=int) # codet5+ code: default=320
-    #parser.add_argument('--max_target_len', default=128, type=int) # codet5+ code: default=128
+    parser.add_argument('--lr', default=2e-5, type=float)
+    parser.add_argument('--lr_warmup_steps', default=0, type=int)
+    parser.add_argument('--per_device_train_batch_size', default=32, type=int)
+    parser.add_argument('--per_device_eval_batch_size', default=8, type=int)
+    parser.add_argument('--optimizer', default="adamw_torch", type=str)
+    parser.add_argument('--epochs', default=10, type=int)
+    parser.add_argument('--weight_decay', default=0.1, type=int)
+    parser.add_argument('--grad_acc_steps', default=1, type=int)
+    parser.add_argument('--eval_acc_steps', default=8, type=int)
     
     # GPU / Speeding up
-    parser.add_argument('--local_rank', default=-1, type=int) # irgendwas mit distributed training
-    parser.add_argument('--deepspeed', default=None, type=str) # interaction with deepspeed library, it is experimental
-    parser.add_argument('--fp16', default=False, action="store_true") # with mixed precision for training acceleration
+    parser.add_argument('--local_rank', default=-1, type=int)
+    parser.add_argument('--deepspeed', default=None, type=str)
+    parser.add_argument('--fp16', default=False, action="store_true")
 
     # Logging
     parser.add_argument('--save_dir', default="../saved_models/", type=str)

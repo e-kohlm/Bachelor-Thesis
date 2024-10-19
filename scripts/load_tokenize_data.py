@@ -1,7 +1,6 @@
 import os
 from datasets import load_dataset, load_from_disk
 from transformers import AutoTokenizer
-#from trouble_shot_utils import get_tokenized_data_info
 
 
 def load_tokenize_data(args, tokenizer):    
@@ -21,27 +20,15 @@ def load_tokenize_data(args, tokenizer):
         validation_set = vulnerability_type + "_dataset-VALIDATION"
         test_set = vulnerability_type + "_dataset-TESTING"
         data_files = {"train": file_path + training_set, "validation": file_path + validation_set, "test": file_path + test_set}
-        datasets = load_dataset("json", data_files=data_files)           
-
-        #data_collator = DataCollatorWithPadding(tokenizer=tokenizer) #neu
+        datasets = load_dataset("json", data_files=data_files)
 
         def preprocess_function(examples):
-
-            tokenized_examples = tokenizer(examples["code"], truncation=True, padding=True) #padding: True = pad to the longest sequence in the batch
-                                                                              #truncation: True = truncate to the maximum length accepted by the model if no max_length is provided which is 512
-                 
-            #return tokenizer(examples["code"], truncation=True, max_length=tokenizer.model_max_length, padding='max_length')
-            
-            # Just for trouble shot
-            #get_tokenized_data_info(tokenized_examples=tokenized_examples)
-            
+            tokenized_examples = tokenizer(examples["code"], truncation=True, padding=True)
             return tokenized_examples
 
         train_data = datasets.map(
             preprocess_function,
-            #data_collator, #neu
-            batched=True,            
-            #num_proc=16,           
+            batched=True,
         )    
 
         train_data = train_data.remove_columns(["snippet_id"])
