@@ -30,6 +30,10 @@ To start a job on a GPU use the command `sbatch pytorch_gpu.sh`.
 ### command finetuning
 `nice -n 19 python3 finetuning.py --vuln_type=sql  --cache_data=../cache_data/sql --save_dir=../saved_models/sql --data_num=20000`
 
+
+python3 finetuning.py --vuln_type=xss  --cache_data=../cache_data/xss --save_dir=../saved_models/xss_optim_model --epochs=31 --per_devi
+ce_train_batch_size=8 --lr=1.8e-5 --lr_warmup_steps=284 --grad_acc_steps=8
+
 ### command gpu_fine-tuning
 nice -n 19 python3 gpu_fine_tuning.py --vuln_type=xsrf  --cache_data=../cache_data/xsrf --save_dir=../saved_models/xsrf --per_device_train_batch_size=1 --per_device_eval_batch_size=1
 
