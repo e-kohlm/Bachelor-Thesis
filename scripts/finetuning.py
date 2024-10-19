@@ -159,7 +159,7 @@ if __name__ == "__main__":
     parser.add_argument('--per_device_eval_batch_size', default=8, type=int)
     parser.add_argument('--optimizer', default="adamw_torch", type=str)
     parser.add_argument('--epochs', default=10, type=int)
-    parser.add_argument('--weight_decay', default=0.1, type=int)
+    parser.add_argument('--weight_decay', default=0.1, type=float)
     parser.add_argument('--grad_acc_steps', default=1, type=int)
     parser.add_argument('--eval_acc_steps', default=8, type=int)
     
