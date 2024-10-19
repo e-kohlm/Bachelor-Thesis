@@ -1,0 +1,12 @@
+{'cache_data': '../cache_data/xss',
+ 'data_num': -1,
+ 'deepspeed': None,
+ 'device': 'cpu',
+ 'fp16': False,
+ 'load': 'Salesforce/codet5p-220m',
+ 'local_rank': -1,
+ 'log_freq': 10,
+ 'n_trials': 10,
+ 'save_dir': '../hyperparameter_search/',
+ 'save_freq': 500,
+ 'vuln_type': 'xss'}
