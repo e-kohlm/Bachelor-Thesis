@@ -23,18 +23,18 @@ The results are stored in VUDENC_data, e.g.:
 * sql_dataset-TRAINING  
 * sql_dataset-VALIDATION    
 
-accordingly for the other six vulnerability types. There are smaller datasets with less code samples (three files with prefix EXAMPLE) provided.   
+There are smaller datasets with less code samples (three files with prefix EXAMPLE) provided.   
 Each file contains code snippets with a label (0 = not vulnerable, 1 = vulnerable) for each.
 
 # Training
-Scripts for hyperparameter search and finetuning need to run from `scripts/`.   
+Scripts for the hyperparameter search and the finetuning need to run from `scripts/`.   
 All training scripts can be called with different arguments, you can find them at the end of each script.  
 Default device is a GPU, but it can be run on a CPU as well, with the argument `--device` (not recommended for this particular model).      
 The default model is  Salesforce/codet5p-220m, which can be changed with the argument `--load`.   
-Default vulnerability type is sql, it can be changed with `--vuln_type`.   
+The default vulnerability type is sql, it can be changed with `--vuln_type`.   
 
 ## Hyperparameter Search
-The arguments with which hyperparameter_search.py can be called are specified in the file.   
+The arguments with which the hyperparameter_search.py can be called are specified in the script.   
 For example, the script can be called with `--n_trials=5`, which determines the number of trials.   
 To find the optimal hyperparameters for the models run   
 `python hyperparameters_search.py`   

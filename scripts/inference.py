@@ -2,7 +2,7 @@ from transformers import pipeline
 import json
 from VUDENC import utils
 
-#FIXME checkpoint hardgecoded
+#FIXME: checkpoint hardgecoded
 classifier_cp_1 = pipeline(task="text-classification", model="saved_models/summarize_python" + "/checkpoint-860") 
 #classifier_f_cp = pipeline(task="text-classification", model=args.save_dir + "/final_checkpoint") # Dateien fehlen
 
@@ -17,7 +17,7 @@ print("vul_cp_1: ", classifier_cp_1(vul_snippet))
 print("not_vul_cp 1: ", classifier_cp_1(not_vul_snippet))
 
 
-print("########### Test with Github code ##############")
+print("########### Test with GitHub code ##############")
 
 mode = 'sql'
 nr = '1'
@@ -31,12 +31,12 @@ with open('../VUDENC_data/plain_' + mode, 'r') as infile:  # This date is used f
 
 identifying = utils.getIdentifiers(mode, nr)  
 info = utils.getFromDataset(identifying, data)          
-sourcefull = info[0]
-lines = (sourcefull.count("\n"))
-commentareas = utils.findComments(sourcefull)
+source_full = info[0]
+lines = (source_full.count("\n"))
+comment_areas = utils.findComments(source_full)
 
   
-def pred(repo_code=sourcefull):
+def pred(repo_code=source_full):
     line = 0
     file = open("../outputs/generator_function.txt", 'a')
     file.write(repo_code + "*********")
@@ -46,7 +46,7 @@ def pred(repo_code=sourcefull):
         retval += char if not char == '\n' else ''
         file.write("\n1 retval: " + retval)
         if char == '\n':
-            file.write("\n2 retval: " +  retval)
+            file.write("\n2 retval: " + retval)
             pred_file = open("../predictions/predictions_EXAMPLE_sql.txt", 'a')
             pred_file.write("line: " + str(line) + "\tcode: " + retval + "\tprediction: " + str(classifier_cp_1(retval)) + "\n")
             line += 1
@@ -57,6 +57,7 @@ def pred(repo_code=sourcefull):
     file.close()
     if retval:
         yield retval
+
 
 file = open("../outputs/generator_function.txt", 'a') 
 file.write(str(list(pred())))
