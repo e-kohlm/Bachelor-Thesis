@@ -28,16 +28,16 @@ if (len(sys.argv) > 1):
 progress = 0
 count = 0
 
-# Paramters for the filtering and creation of samples
+# Parameters for the filtering and creation of samples
 restriction = [20000, 5, 6, 10]  # which samples to filter out
-step = 5  # step lenght n in the description
+step = 5  # step length in the description
 fulllength = 200  # context length m in the description
 
 # load data
 with (open('../../VUDENC_data/plain_' + mode, 'r') as infile):
     data = json.load(infile)
 
-now = datetime.now()  # current date and time
+now = datetime.now()
 nowformat = now.strftime("%H:%M")
 print("finished loading. ", nowformat)
 
