@@ -1,3 +1,13 @@
+# Bachelor-Thesis
+
+## Disclaimer
+This repository contains code that was developed for a **Bachelor's thesis** and is provided **for research purposes only**.  
+**It is NOT intended for production use and is NOT maintained.**  
+
+The code may contain incomplete implementations, security vulnerabilities, or outdated dependencies.  
+Use at your own risk. 
+
+
 ## Preprocessing VUDENC Data
 Download of VUDENC datasets from Zenodo:   
 https://zenodo.org/record/3559841
